@@ -5,7 +5,8 @@ for an AI assistant (Claude Code and others) to read, query and edit them.
 It speaks JSON-RPC 2.0 over stdio, one message per line, and is built on
 the same crates as the [`wc3-rs`](../wc3-rs) editor:
 [`slk-rs`](../slk-rs) for SLK tables, [`storm-rs`](../storm-rs) for MPQ
-archives and maps, [`w3abdhqtu-rs`](../w3abdhqtu-rs) for object data.
+archives and maps, [`w3abdhqtu-rs`](../w3abdhqtu-rs) for object data,
+[`wts-rs`](../wts-rs) for string tables.
 
 ## Tools
 
@@ -90,7 +91,26 @@ its `level` and data `column` (`Data A` is 1).
 | `obj_new`    | adds a custom object: its id and the standard object it starts from |
 | `obj_delete` | removes an object |
 
-Names that are `TRIGSTR_...` are keys into the map's `war3map.wts`.
+A string value that is `TRIGSTR_<n>` (most names and tooltips in maps)
+comes with its text from the map's string table: read from `archive` by
+itself, or from `strings`, a `war3map.wts` on disk. `obj_list`'s names are
+the text; `obj_get`'s fields keep the `value` and add the `text`.
+
+### String tables
+
+A map's `war3map.wts` (and `war3campaign.wts`), with `wts-rs`: the text
+object data, triggers and the map's info name as `TRIGSTR_<n>`. A table is
+read from disk (`path`) or from inside a map (`archive`; `war3map.wts` by
+default), and changed on disk, keeping its byte-order mark and line
+breaks.
+
+| tool          | does |
+|---------------|------|
+| `wts_list`    | the strings: number, the comments World Editor writes (what uses it), the text (the first 200 characters, `length` the whole); filter by text, page |
+| `wts_get`     | strings by number, whole |
+| `wts_resolve` | text with every `TRIGSTR_<n>` the table has replaced by its text |
+| `wts_set`     | writes, adds or removes (`null`) one string, changing only its lines |
+| `wts_lint`    | parse errors and lint warnings (a number defined twice) |
 
 ## Using it
 
@@ -111,9 +131,9 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `slk.rs`: the SLK tools;
 - `mpq.rs`: the MPQ tools;
 - `obj.rs`: the object data tools;
+- `wts.rs`: the string table tools;
 - `source.rs`: reading a file from disk or from inside an archive.
 
-To come: the map's strings (`war3map.wts`), so names show as text.
 
 ## Tests
 

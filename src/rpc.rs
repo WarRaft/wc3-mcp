@@ -3,7 +3,7 @@
 //! - `initialize` answers with the protocol version the client asked for,
 //!   the server's name and that it has tools;
 //! - `tools/list` lists them ([`crate::slk::tools`], [`crate::mpq::tools`],
-//!   [`crate::obj::tools`]);
+//!   [`crate::obj::tools`], [`crate::wts::tools`]);
 //! - `tools/call` runs one: its answer is text (JSON for data), and a
 //!   failure is a result with `isError`, so the model reads why;
 //! - `ping` answers `{}`; notifications (no `id`) get no answer.
@@ -51,7 +51,9 @@ fn initialize(params: &Value) -> Value {
             (listfile) needs names from listfiles=[...] to find its files. Object data \
             (war3map.w3a abilities, .w3b, .w3d, .w3h, .w3q, .w3t items, .w3u units): \
             obj_list, obj_get, obj_text, obj_check, and to change them obj_set, obj_new, \
-            obj_delete; give game=[the game's folders] for field names, types and checks.",
+            obj_delete; give game=[the game's folders] for field names, types and checks; \
+            TRIGSTR_<n> values show as their text from the map's war3map.wts. String tables \
+            (war3map.wts): wts_list, wts_get, wts_resolve, wts_lint, and wts_set to change one.",
     })
 }
 
@@ -60,6 +62,7 @@ fn call(params: &Value) -> Value {
     let args = params.get("arguments").cloned().unwrap_or(json!({}));
     let answer = crate::mpq::call(name, &args)
         .or_else(|| crate::obj::call(name, &args))
+        .or_else(|| crate::wts::call(name, &args))
         .unwrap_or_else(|| crate::slk::call(name, &args));
     match answer {
         Ok(v) => {
@@ -74,11 +77,13 @@ fn call(params: &Value) -> Value {
     }
 }
 
-/// Every tool: the SLK ones, the MPQ ones, the object data ones.
+/// Every tool: the SLK ones, the MPQ ones, the object data ones, the
+/// string table ones.
 fn tools() -> Value {
     let mut all = crate::slk::tools().as_array().cloned().unwrap_or_default();
     all.extend(crate::mpq::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::obj::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::wts::tools().as_array().cloned().unwrap_or_default());
     Value::Array(all)
 }
 

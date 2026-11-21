@@ -28,7 +28,8 @@ pub fn tools() -> Value {
     let archive = json!({"type": "string", "description": "A map or archive (.w3x, .w3m, .mpq) to read `path` from"});
     let game = json!({"type": "array", "items": {"type": "string"}, "description": "The game's folders, lowest first (as a project's game=): their War3*.mpq and files give the fields' names, types and checks"});
     let object = json!({"type": "string", "description": "The object's id: a custom one's (A000), a changed standard one's (AHbz)"});
-    let source = json!({"path": path, "archive": archive, "game": game});
+    let strings = json!({"type": "string", "description": "The map's string table (war3map.wts) on disk, to show TRIGSTR_<n> values as their text; read from `archive` by itself"});
+    let source = json!({"path": path, "archive": archive, "game": game, "strings": strings});
     let with = |extra: Value| {
         let mut props = source.as_object().expect("an object").clone();
         props.extend(extra.as_object().expect("an object").clone());
@@ -124,10 +125,22 @@ pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
     })
 }
 
-/// A file and the metadata of its kind.
+/// A file, the metadata of its kind, and the map's string table.
 struct File {
     data: ObjectData,
     meta: Metadata,
+    strings: Option<wts_rs::Document>,
+}
+
+impl File {
+    /// A value as JSON, a `TRIGSTR_<n>` as its text when the string
+    /// table has it.
+    fn value(&self, v: &w3abdhqtu_rs::Value) -> Value {
+        match (v, &self.strings) {
+            (w3abdhqtu_rs::Value::Str(s), Some(table)) => json!(table.resolve(s)),
+            _ => value_json(v),
+        }
+    }
 }
 
 fn string<'a>(args: &'a Value, key: &str) -> Result<&'a str, String> {
@@ -168,6 +181,7 @@ fn open(args: &Value) -> Result<File, String> {
     Ok(File {
         data,
         meta: metadata(args, kind),
+        strings: crate::wts::table_for(args),
     })
 }
 
@@ -222,11 +236,11 @@ fn name_field(kind: Kind) -> &'static [u8; 4] {
     }
 }
 
-fn name(kind: Kind, o: &Object) -> Value {
-    let field = Rawcode(*name_field(kind));
+fn name(f: &File, o: &Object) -> Value {
+    let field = Rawcode(*name_field(f.data.kind));
     o.mods()
         .find(|m| m.field == field)
-        .map_or(Value::Null, |m| value_json(&m.value))
+        .map_or(Value::Null, |m| f.value(&m.value))
 }
 
 fn value_json(v: &w3abdhqtu_rs::Value) -> Value {
@@ -273,7 +287,7 @@ fn list(f: &File, args: &Value) -> Result<Value, String> {
                 "id": id_text(object_id(o)),
                 "base": id_text(o.base),
                 "table": t,
-                "name": name(kind, o),
+                "name": name(f, o),
                 "fields": o.mods().count(),
             })
         })
@@ -297,7 +311,8 @@ fn list(f: &File, args: &Value) -> Result<Value, String> {
     )
 }
 
-fn field_json(m: &Mod, kind: Kind, meta: &Metadata, keys: &w3abdhqtu_rs::Keys) -> Value {
+fn field_json(f: &File, m: &Mod, keys: &w3abdhqtu_rs::Keys) -> Value {
+    let (kind, meta) = (f.data.kind, &f.meta);
     let mut obj = Map::new();
     // As the text form writes it: by its name in the game's tables.
     let key = w3abdhqtu_rs::field_key(m, kind, meta, keys);
@@ -311,6 +326,11 @@ fn field_json(m: &Mod, kind: Kind, meta: &Metadata, keys: &w3abdhqtu_rs::Keys) -
     obj.insert("column".into(), json!(m.column));
     obj.insert("stored".into(), json!(type_name(&m.value)));
     obj.insert("value".into(), value_json(&m.value));
+    // A TRIGSTR_<n> with the text the map's string table gives it.
+    let text = f.value(&m.value);
+    if text != obj["value"] {
+        obj.insert("text".into(), text);
+    }
     Value::Object(obj)
 }
 
@@ -327,11 +347,7 @@ fn get(f: &File, args: &Value) -> Result<Value, String> {
         .sets
         .iter()
         .map(|s| {
-            let fields: Vec<Value> = s
-                .mods
-                .iter()
-                .map(|m| field_json(m, f.data.kind, &f.meta, &keys))
-                .collect();
+            let fields: Vec<Value> = s.mods.iter().map(|m| field_json(f, m, &keys)).collect();
             json!({"flags": s.flags, "fields": fields})
         })
         .collect();
@@ -339,7 +355,7 @@ fn get(f: &File, args: &Value) -> Result<Value, String> {
         "id": id_text(object_id(o)),
         "base": id_text(o.base),
         "table": if custom { "custom" } else { "original" },
-        "name": name(f.data.kind, o),
+        "name": name(f, o),
         "sets": sets,
     }))
 }

@@ -1,13 +1,15 @@
 //! `wc3-mcp`: an MCP server for Warcraft III's files, over stdio. A
 //! client (Claude Code, say) starts it and sends JSON-RPC 2.0 messages, one
 //! per line; the server answers each request on a line of its own. See
-//! [`rpc`] for the protocol, [`slk`], [`mpq`] and [`obj`] for the tools.
+//! [`rpc`] for the protocol, [`slk`], [`mpq`], [`obj`] and [`wts`] for the
+//! tools.
 
 mod mpq;
 mod obj;
 mod rpc;
 mod slk;
 mod source;
+mod wts;
 
 use std::io::{BufRead, Write};
 

@@ -13,5 +13,6 @@ path = "src/main.rs"
 slk-rs = { path = "../slk-rs" }
 storm-rs = { path = "../storm-rs" }
 w3abdhqtu-rs = { path = "../w3abdhqtu-rs" }
+wts-rs = { path = "../wts-rs" }
 # Keys in insertion order: a row's columns stay in the table's order.
 serde_json = { version = "1.0.145", features = ["preserve_order"] }
