@@ -155,22 +155,21 @@ fn kind(path: &str) -> Result<Kind, String> {
     ))
 }
 
-/// The metadata of `kind` from `args.game`; empty without it.
+/// The metadata of `kind` from `args.game`, the game's folders, read as
+/// the editor reads it (the server's `objects::metadata`); empty without
+/// them.
 fn metadata(args: &Value, kind: Kind) -> Metadata {
-    let folders: Vec<String> = args
+    let folders: Vec<std::path::PathBuf> = args
         .get("game")
         .and_then(Value::as_array)
         .map(|l| {
             l.iter()
                 .filter_map(Value::as_str)
-                .map(str::to_string)
+                .map(std::path::PathBuf::from)
                 .collect()
         })
         .unwrap_or_default();
-    if folders.is_empty() {
-        return Metadata::default();
-    }
-    Metadata::load(kind, crate::source::game(&folders))
+    wc3_server::objects::metadata(&folders, kind)
 }
 
 fn open(args: &Value) -> Result<File, String> {

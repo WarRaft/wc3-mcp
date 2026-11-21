@@ -142,9 +142,10 @@ JASS calling only functions declared above:
   build orders functions; locals go anywhere). A project can still turn
   `pure` on in `[lint]`; a tool can ask for either.
 
-Decided: the wc3-rs server becomes a library as well as a binary, and
-these tools use its project model in-process (workspace, symbol index,
-rename, analysis), so the editor and the model see the same thing.
+The wc3-rs server is a library as well as a binary (`wc3_server`), and
+these tools will use its project model in-process (workspace, symbol
+index, rename, analysis), so the editor and the model see the same thing.
+The object data tools already read the game's metadata through it.
 
 ## Using it
 
@@ -167,6 +168,9 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `obj.rs`: the object data tools;
 - `wts.rs`: the string table tools;
 - `source.rs`: reading a file from disk or from inside an archive.
+
+The game's metadata comes from the editor's server, used as a library
+(`wc3_server::objects::metadata`), so both read the game the same way.
 
 
 ## Tests

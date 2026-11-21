@@ -14,5 +14,8 @@ slk-rs = { path = "../slk-rs" }
 storm-rs = { path = "../storm-rs" }
 w3abdhqtu-rs = { path = "../w3abdhqtu-rs" }
 wts-rs = { path = "../wts-rs" }
+# The editor's project model: game files, metadata, and (planned) the
+# workspace, symbol index and rename for JASS.
+wc3-server = { path = "../wc3-rs/server" }
 # Keys in insertion order: a row's columns stay in the table's order.
 serde_json = { version = "1.0.145", features = ["preserve_order"] }
