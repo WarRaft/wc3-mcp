@@ -29,7 +29,7 @@ pub fn tools() -> Value {
     let game = json!({"type": "array", "items": {"type": "string"}, "description": "The game's folders, lowest first (as a project's game=): their War3*.mpq and files give the fields' names, types and checks"});
     let object = json!({"type": "string", "description": "The object's id: a custom one's (A000), a changed standard one's (AHbz)"});
     let strings = json!({"type": "string", "description": "The map's string table (war3map.wts) on disk, to show TRIGSTR_<n> values as their text; read from `archive` by itself"});
-    let source = json!({"path": path, "archive": archive, "game": game, "strings": strings});
+    let source = json!({"path": path, "archive": archive, "game": game, "roots": crate::source::roots_schema(), "strings": strings});
     let with = |extra: Value| {
         let mut props = source.as_object().expect("an object").clone();
         props.extend(extra.as_object().expect("an object").clone());
@@ -80,6 +80,7 @@ pub fn tools() -> Value {
                 "properties": {
                     "path": disk,
                     "game": game,
+                    "roots": crate::source::roots_schema(),
                     "object": object,
                     "field": {"type": "string", "description": "The field: its name in the game's tables as obj_get keys it (Cool, DataA, HP) or its id (acdn, Hbz1, uhpm)"},
                     "level": {"type": "integer", "minimum": 0},
@@ -155,21 +156,11 @@ fn kind(path: &str) -> Result<Kind, String> {
     ))
 }
 
-/// The metadata of `kind` from `args.game`, the game's folders, read as
-/// the editor reads it (the server's `objects::metadata`); empty without
+/// The metadata of `kind` from `args.game` and `args.roots`, read as the
+/// editor reads it (the server's `objects::metadata`); empty without
 /// them.
 fn metadata(args: &Value, kind: Kind) -> Metadata {
-    let folders: Vec<std::path::PathBuf> = args
-        .get("game")
-        .and_then(Value::as_array)
-        .map(|l| {
-            l.iter()
-                .filter_map(Value::as_str)
-                .map(std::path::PathBuf::from)
-                .collect()
-        })
-        .unwrap_or_default();
-    wc3_server::objects::metadata(&folders, kind)
+    wc3_server::objects::metadata(&crate::source::lookup(args), kind)
 }
 
 fn open(args: &Value) -> Result<File, String> {

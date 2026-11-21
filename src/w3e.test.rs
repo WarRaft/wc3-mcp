@@ -42,7 +42,14 @@ fn info_points_set() {
     std::fs::write(&path, terrain().to_bytes().unwrap()).unwrap();
 
     let info = run("w3e_info", json!({"path": path})).unwrap();
-    assert_eq!(info["tileset_name"], "Lordaeron Summer");
+    // No game folders: no name.
+    assert_eq!(info["tileset_name"], Value::Null);
+    let game = dir.join("game");
+    std::fs::create_dir_all(game.join("UI")).unwrap();
+    std::fs::write(game.join("UI/WorldEditData.txt"), "[TileSets]\nL=WESTRING_LOCALE_L,x\n").unwrap();
+    std::fs::write(game.join("UI/WorldEditStrings.txt"), "[WorldEditStrings]\nWESTRING_LOCALE_L=Lordaeron Summer\n").unwrap();
+    let named = run("w3e_info", json!({"path": path, "game": [game]})).unwrap();
+    assert_eq!(named["tileset_name"], "Lordaeron Summer");
     assert_eq!(
         info["ground"][0],
         json!({"index": 0, "code": "Ldrt", "points": 12})

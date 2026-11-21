@@ -8,7 +8,7 @@
 //! a point's world position is the offset plus 128 per step.
 
 use serde_json::{Map, Value, json};
-use w3e_rs::{Point, Terrain, Version, ZERO_HEIGHT, tileset_name};
+use w3e_rs::{Point, Terrain, Version, ZERO_HEIGHT};
 
 /// The most points `w3e_points` gives at once.
 const MAX_POINTS: u64 = 4096;
@@ -57,8 +57,13 @@ pub fn tools() -> Value {
     json!([
         {
             "name": "w3e_info",
-            "description": "A map's terrain (war3map.w3e): version, base tileset, the ground and cliff textures with how many points use each, the grid's size, and its world bounds.",
-            "inputSchema": {"type": "object", "properties": {"path": path, "archive": archive}},
+            "description": "A map's terrain (war3map.w3e): version, base tileset (its name from the game's files when `game` is given), the ground and cliff textures with how many points use each, the grid's size, and its world bounds.",
+            "inputSchema": {"type": "object", "properties": {
+                "path": path,
+                "archive": archive,
+                "game": {"type": "array", "items": {"type": "string"}, "description": "The game's folders, lowest first (as a project's game=): the tileset's name comes from their UI\\WorldEditData.txt and UI\\WorldEditStrings.txt"},
+                "roots": crate::source::roots_schema(),
+            }},
         },
         {
             "name": "w3e_points",
@@ -77,7 +82,12 @@ pub fn tools() -> Value {
 /// the model.
 pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
     Some(match name {
-        "w3e_info" => open(args).map(|t| info(&t)),
+        "w3e_info" => open(args).map(|t| {
+            let names = wc3_server::names::names(&crate::source::lookup(args));
+            let mut out = info(&t);
+            out["tileset_name"] = json!(names.tileset(t.tileset as char));
+            out
+        }),
         "w3e_points" => open(args).and_then(|t| points(&t, args)),
         "w3e_set" => set(args),
         _ => return None,
@@ -111,7 +121,6 @@ fn info(t: &Terrain) -> Value {
     json!({
         "version": t.version,
         "tileset": (t.tileset as char).to_string(),
-        "tileset_name": tileset_name(t.tileset),
         "custom_tilesets": t.custom_tilesets,
         "ground": list(&t.ground, &ground),
         "cliffs": list(&t.cliffs, &cliffs),

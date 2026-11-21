@@ -77,7 +77,10 @@ disk or from inside a map (`archive`), and changed on disk. `game`, the
 game's folders as a project's `game=` lists them, gives the fields' names
 and types and the checks: their `War3*.mpq` and loose files are laid over
 each other as the game does (`storm_rs::archive::Layers`), and the
-metadata read from them (`Metadata::load`).
+metadata read from them (`Metadata::load`). `roots`, the map's roots as a
+project's `[map] root=` lists them (folders or maps), go over the game's
+folders: the last layer that has a file wins, the same lookup the editor
+uses (`wc3_server::game::Lookup`).
 
 An object is named by its id: a custom one's (`A000`), a changed standard
 one's (`AHbz`). A field is its id, and for abilities, upgrades and doodads
@@ -164,7 +167,7 @@ per step.
 
 | tool         | does |
 |--------------|------|
-| `w3e_info`   | version, base tileset, the ground and cliff textures with how many points use each, the size, the world bounds |
+| `w3e_info`   | version, base tileset (its name from the game's files with `game` and `roots`), the ground and cliff textures with how many points use each, the size, the world bounds |
 | `w3e_points` | the points of a region (4096 at most): world position, height (and from zero), water, texture (index and rawcode), ramp, blight, water, boundary, edge, variations, cliff level and texture |
 | `w3e_set`    | sets fields on every point of a region; a texture by index or rawcode from the ground list; values are checked against the file first |
 
