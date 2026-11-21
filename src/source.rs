@@ -55,3 +55,14 @@ pub fn lookup(args: &serde_json::Value) -> wc3_server::game::Lookup {
 pub fn roots_schema() -> serde_json::Value {
     serde_json::json!({"type": "array", "items": {"type": "string"}, "description": "The map's roots over the game's folders, lowest first (as a project's [map] root=): folders or maps whose files replace the game's"})
 }
+
+/// The schema of `game`, for the tools that show the game's names.
+pub fn game_schema() -> serde_json::Value {
+    serde_json::json!({"type": "array", "items": {"type": "string"}, "description": "The game's folders, lowest first (as a project's game=): names come from their files (UI\\WorldEditStrings.txt ...), in the game's language"})
+}
+
+/// The names the game's files give, through `args.game` and
+/// `args.roots` (none without them).
+pub fn names(args: &serde_json::Value) -> wc3_server::names::Names {
+    wc3_server::names::names(&lookup(args))
+}

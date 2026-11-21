@@ -7,7 +7,7 @@ the same crates as the [`wc3-rs`](../wc3-rs) editor:
 [`slk-rs`](../slk-rs) for SLK tables, [`storm-rs`](../storm-rs) for MPQ
 archives and maps, [`w3abdhqtu-rs`](../w3abdhqtu-rs) for object data,
 [`wts-rs`](../wts-rs) for string tables, [`w3c-rs`](../w3c-rs) for
-cameras, [`w3r-rs`](../w3r-rs) for regions, [`w3e-rs`](../w3e-rs) for
+cameras, [`w3r-rs`](../w3r-rs) for regions, [`w3s-rs`](../w3s-rs) for sounds, [`w3e-rs`](../w3e-rs) for
 terrain, [`w3i-rs`](../w3i-rs) for map info.
 
 ## Tools
@@ -156,6 +156,24 @@ Names and indexes stay unique, and the rectangle's left isn't past its
 right (nor bottom past top): a change that breaks one is refused,
 nothing written.
 
+### Sounds
+
+A map's `war3map.w3s`, with `w3s-rs`: the sounds the Sound Editor
+defines (`gg_snd_*` in the script). Read from disk (`path`) or from
+inside a map (`archive`; `war3map.w3s` by default), changed on disk. A
+sound is named by its variable or its index in the file. A number may be
+`"default"`: World Editor's "use default", the game's own value.
+
+| tool         | does |
+|--------------|------|
+| `w3s_list`   | every sound: index, variable, file, EAX setting, flags (and their names), fades, volume, pitch, channel (and its name), distances, cone |
+| `w3s_set`    | changes some fields of a sound |
+| `w3s_new`    | adds a sound (a new file when there's none): `name` and `file` are needed; World Editor's values otherwise |
+| `w3s_delete` | removes a sound |
+
+Variables stay unique: a change that repeats one is refused, nothing
+written.
+
 ### Terrain
 
 A map's `war3map.w3e`, with `w3e-rs`: its tilesets, and the grid of
@@ -242,6 +260,7 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `wts.rs`: the string table tools;
 - `w3c.rs`: the camera tools;
 - `w3r.rs`: the region tools;
+- `w3s.rs`: the sound tools;
 - `w3e.rs`: the terrain tools;
 - `w3i.rs`: the map info tools;
 - `source.rs`: reading a file from disk or from inside an archive.

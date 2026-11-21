@@ -24,7 +24,7 @@ fn text_and_write() {
     let text = run("w3i_text", json!({"path": p})).unwrap();
     let text = text.as_str().unwrap();
     assert!(text.contains("name=\"Old\"\n"), "{text}");
-    let new = text.replace("name=\"Old\"", "name=\"New\"").replace("race=1 // human", "race=2");
+    let new = text.replace("name=\"Old\"", "name=\"New\"").replace("race=1", "race=2");
     let out = run("w3i_write", json!({"path": p, "text": new})).unwrap();
     assert_eq!(out["players"], 1);
     let back = w3i_rs::parse(&std::fs::read(&path).unwrap()).unwrap();

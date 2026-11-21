@@ -36,8 +36,8 @@ pub fn tools() -> Value {
     json!([
         {
             "name": "w3r_list",
-            "description": "A map's regions (war3map.w3r): name, the script's variable (gg_rct_...), index, the rectangle (left, bottom, right, top in world coordinates), weather, ambient sound, color.",
-            "inputSchema": {"type": "object", "properties": {"path": path, "archive": archive}},
+            "description": "A map's regions (war3map.w3r): name, the script's variable (gg_rct_...), index, the rectangle (left, bottom, right, top in world coordinates), weather, ambient sound, color. With `game`, the weather's name from the game's files.",
+            "inputSchema": {"type": "object", "properties": {"path": path, "archive": archive, "game": crate::source::game_schema(), "roots": crate::source::roots_schema()}},
         },
         {
             "name": "w3r_set",
@@ -61,7 +61,15 @@ pub fn tools() -> Value {
 /// the model.
 pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
     Some(match name {
-        "w3r_list" => open(args).map(|f| list(&f)),
+        "w3r_list" => open(args).map(|f| {
+            let names = crate::source::names(args);
+            let mut out = list(&f);
+            for r in out["regions"].as_array_mut().into_iter().flatten() {
+                let id = r["weather"].as_str().unwrap_or_default().to_string();
+                r["weather_name"] = json!(names.weather(&id));
+            }
+            out
+        }),
         "w3r_set" => change(args, false, set),
         "w3r_new" => change(args, true, add),
         "w3r_delete" => change(args, false, delete),

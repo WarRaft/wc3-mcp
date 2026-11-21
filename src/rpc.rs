@@ -5,7 +5,7 @@
 //! - `tools/list` lists them ([`crate::slk::tools`], [`crate::mpq::tools`],
 //!   [`crate::obj::tools`], [`crate::wts::tools`], [`crate::w3c::tools`],
 //!   [`crate::w3e::tools`], [`crate::w3i::tools`],
-//!   [`crate::w3r::tools`]);
+//!   [`crate::w3r::tools`], [`crate::w3s::tools`]);
 //! - `tools/call` runs one: its answer is text (JSON for data), and a
 //!   failure is a result with `isError`, so the model reads why;
 //! - `ping` answers `{}`; notifications (no `id`) get no answer.
@@ -62,7 +62,8 @@ fn initialize(params: &Value) -> Value {
             of the grid (column, row from the bottom left), w3e_set to change one. \
             Map info (war3map.w3i: name, description, players, forces, tech tree, random tables): \
             w3i_text gives it as text, w3i_write writes that text back after checking it. \
-            Regions (war3map.w3r): w3r_list, and w3r_set, w3r_new, w3r_delete; a region by name or index.",
+            Regions (war3map.w3r): w3r_list, and w3r_set, w3r_new, w3r_delete; a region by name or index. \
+            Sounds (war3map.w3s): w3s_list, and w3s_set, w3s_new, w3s_delete; a sound by its variable or index.",
     })
 }
 
@@ -76,6 +77,7 @@ fn call(params: &Value) -> Value {
         .or_else(|| crate::w3e::call(name, &args))
         .or_else(|| crate::w3i::call(name, &args))
         .or_else(|| crate::w3r::call(name, &args))
+        .or_else(|| crate::w3s::call(name, &args))
         .unwrap_or_else(|| crate::slk::call(name, &args));
     match answer {
         Ok(v) => {
@@ -101,6 +103,7 @@ fn tools() -> Value {
     all.extend(crate::w3e::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::w3i::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::w3r::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::w3s::tools().as_array().cloned().unwrap_or_default());
     Value::Array(all)
 }
 

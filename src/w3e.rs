@@ -57,11 +57,11 @@ pub fn tools() -> Value {
     json!([
         {
             "name": "w3e_info",
-            "description": "A map's terrain (war3map.w3e): version, base tileset (its name from the game's files when `game` is given), the ground and cliff textures with how many points use each, the grid's size, and its world bounds.",
+            "description": "A map's terrain (war3map.w3e): version, base tileset, the ground and cliff textures with how many points use each, the grid's size, and its world bounds. With `game`, the tileset's and the textures' names from the game's files.",
             "inputSchema": {"type": "object", "properties": {
                 "path": path,
                 "archive": archive,
-                "game": {"type": "array", "items": {"type": "string"}, "description": "The game's folders, lowest first (as a project's game=): the tileset's name comes from their UI\\WorldEditData.txt and UI\\WorldEditStrings.txt"},
+                "game": crate::source::game_schema(),
                 "roots": crate::source::roots_schema(),
             }},
         },
@@ -83,9 +83,15 @@ pub fn tools() -> Value {
 pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
     Some(match name {
         "w3e_info" => open(args).map(|t| {
-            let names = wc3_server::names::names(&crate::source::lookup(args));
+            let names = crate::source::names(args);
             let mut out = info(&t);
             out["tileset_name"] = json!(names.tileset(t.tileset as char));
+            for (key, table) in [("ground", &names.ground), ("cliffs", &names.cliffs)] {
+                for entry in out[key].as_array_mut().into_iter().flatten() {
+                    let code = entry["code"].as_str().unwrap_or_default().to_string();
+                    entry["name"] = json!(table.get(&code));
+                }
+            }
             out
         }),
         "w3e_points" => open(args).and_then(|t| points(&t, args)),

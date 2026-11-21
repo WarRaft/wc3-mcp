@@ -50,9 +50,13 @@ fn info_points_set() {
     std::fs::write(game.join("UI/WorldEditStrings.txt"), "[WorldEditStrings]\nWESTRING_LOCALE_L=Lordaeron Summer\n").unwrap();
     let named = run("w3e_info", json!({"path": path, "game": [game]})).unwrap();
     assert_eq!(named["tileset_name"], "Lordaeron Summer");
+    std::fs::create_dir_all(game.join("TerrainArt")).unwrap();
+    std::fs::write(game.join("TerrainArt/Terrain.slk"), "ID;PWXL;N;E\nC;X1;Y1;K\"tileID\"\nC;X2;K\"name\"\nC;X1;Y2;K\"Ldrt\"\nC;X2;K\"Dirt\"\nE\n").unwrap();
+    let named = run("w3e_info", json!({"path": path, "game": [game]})).unwrap();
+    assert_eq!(named["ground"][0]["name"], "Dirt");
     assert_eq!(
         info["ground"][0],
-        json!({"index": 0, "code": "Ldrt", "points": 12})
+        json!({"index": 0, "code": "Ldrt", "points": 12, "name": null})
     );
     assert_eq!(
         info["bounds"],

@@ -13,6 +13,7 @@ mod w3c;
 mod w3e;
 mod w3i;
 mod w3r;
+mod w3s;
 mod wts;
 
 use std::io::{BufRead, Write};
