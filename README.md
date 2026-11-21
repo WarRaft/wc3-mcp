@@ -112,6 +112,40 @@ breaks.
 | `wts_set`     | writes, adds or removes (`null`) one string, changing only its lines |
 | `wts_lint`    | parse errors and lint warnings (a number defined twice) |
 
+## Planned: JASS
+
+Not built yet. These are the next tools, and what the modules underneath
+are shaped for (jass-rs, the wc3-rs server):
+
+1. **Check a script**: syntax and semantics, as diagnostics. Semantics
+   first means names and order: an unknown function, variable or type, a
+   call with the wrong number of arguments; checking types (arguments,
+   `set`, `return`, conditions, the `handle` hierarchy from `common.j`)
+   comes after.
+2. **Lint and bad patterns**, by the same rules and project settings
+   (`[lint]` in `wc3.bni`) the editor uses.
+3. **List natives** (and `Blizzard.j`'s functions) from the project's
+   `game=` folders, with the comments written above them, where a
+   `common.j` (UjAPI's, say) has them.
+4. **Refactor**: rename a symbol everywhere it's used, scopes and
+   shadowing taken care of, so the model asks for a rename instead of
+   working out the language's rules itself.
+
+Two kinds of checking, because the build sorts functions to get around
+JASS calling only functions declared above:
+
+- **pure**: `war3map.j` as the game reads it; a call before the
+  function's declaration, a `local` after a statement, and the rest of
+  the `pure` group are errors. A map's script (`war3map.j`, inside a map
+  or by that name) is checked this way by itself.
+- **development**: the project's sources, where those are fine (the
+  build orders functions; locals go anywhere). A project can still turn
+  `pure` on in `[lint]`; a tool can ask for either.
+
+Decided: the wc3-rs server becomes a library as well as a binary, and
+these tools use its project model in-process (workspace, symbol index,
+rename, analysis), so the editor and the model see the same thing.
+
 ## Using it
 
 ```sh
