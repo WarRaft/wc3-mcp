@@ -308,7 +308,7 @@ fn set(args: &Value) -> Result<Value, String> {
     let value = slk_rs::parse_input(&input, table.get(r, c).map(|cell| &cell.value));
     let edits = slk_rs::set_cell(&doc, r, c, value.as_ref());
     if !edits.is_empty() {
-        crate::source::write(path, &slk_rs::apply(&text, &edits))?;
+        crate::source::write(path, slk_rs::apply(&text, &edits))?;
     }
     let after = Table::new(&slk_rs::parse(&crate::source::read(path, None)?)).text(r, c);
     Ok(

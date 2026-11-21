@@ -2,7 +2,8 @@
 //!
 //! - `initialize` answers with the protocol version the client asked for,
 //!   the server's name and that it has tools;
-//! - `tools/list` lists them ([`crate::slk::tools`], [`crate::mpq::tools`]);
+//! - `tools/list` lists them ([`crate::slk::tools`], [`crate::mpq::tools`],
+//!   [`crate::obj::tools`]);
 //! - `tools/call` runs one: its answer is text (JSON for data), and a
 //!   failure is a result with `isError`, so the model reads why;
 //! - `ping` answers `{}`; notifications (no `id`) get no answer.
@@ -47,14 +48,19 @@ fn initialize(params: &Value) -> Value {
             (.mpq, .w3x, .w3m): mpq_info, mpq_list (masks like Units\\*.slk), mpq_read \
             (text, or hex for binary), mpq_extract to a folder, mpq_verify; and to change \
             them mpq_create, mpq_add, mpq_remove, mpq_rename. An archive without a \
-            (listfile) needs names from listfiles=[...] to find its files.",
+            (listfile) needs names from listfiles=[...] to find its files. Object data \
+            (war3map.w3a abilities, .w3b, .w3d, .w3h, .w3q, .w3t items, .w3u units): \
+            obj_list, obj_get, obj_text, obj_check, and to change them obj_set, obj_new, \
+            obj_delete; give game=[the game's folders] for field names, types and checks.",
     })
 }
 
 fn call(params: &Value) -> Value {
     let name = params.get("name").and_then(Value::as_str).unwrap_or("");
     let args = params.get("arguments").cloned().unwrap_or(json!({}));
-    let answer = crate::mpq::call(name, &args).unwrap_or_else(|| crate::slk::call(name, &args));
+    let answer = crate::mpq::call(name, &args)
+        .or_else(|| crate::obj::call(name, &args))
+        .unwrap_or_else(|| crate::slk::call(name, &args));
     match answer {
         Ok(v) => {
             let text = match v {
@@ -68,10 +74,11 @@ fn call(params: &Value) -> Value {
     }
 }
 
-/// Every tool: the SLK ones, then the MPQ ones.
+/// Every tool: the SLK ones, the MPQ ones, the object data ones.
 fn tools() -> Value {
     let mut all = crate::slk::tools().as_array().cloned().unwrap_or_default();
     all.extend(crate::mpq::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::obj::tools().as_array().cloned().unwrap_or_default());
     Value::Array(all)
 }
 

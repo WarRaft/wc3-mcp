@@ -4,8 +4,8 @@ An [MCP](https://modelcontextprotocol.io) server for Warcraft III's files,
 for an AI assistant (Claude Code and others) to read, query and edit them.
 It speaks JSON-RPC 2.0 over stdio, one message per line, and is built on
 the same crates as the [`wc3-rs`](../wc3-rs) editor:
-[`slk-rs`](../slk-rs) for SLK tables and [`storm-rs`](../storm-rs) for MPQ
-archives and maps.
+[`slk-rs`](../slk-rs) for SLK tables, [`storm-rs`](../storm-rs) for MPQ
+archives and maps, [`w3abdhqtu-rs`](../w3abdhqtu-rs) for object data.
 
 ## Tools
 
@@ -65,6 +65,33 @@ game's own list, say).
 
 A SLK table inside an archive is read with the `slk_*` tools and `archive`.
 
+### Object data
+
+A map's changes to the game's objects, with `w3abdhqtu-rs`: abilities
+(`war3map.w3a`), destructables (`.w3b`), doodads (`.w3d`), buffs (`.w3h`),
+upgrades (`.w3q`), items (`.w3t`), units (`.w3u`). A file is read from
+disk or from inside a map (`archive`), and changed on disk. `game`, the
+game's folders as a project's `game=` lists them, gives the fields' names
+and types and the checks: their `War3*.mpq` and loose files are laid over
+each other as the game does (`storm_rs::archive::Layers`), and the
+metadata read from them (`Metadata::load`).
+
+An object is named by its id: a custom one's (`A000`), a changed standard
+one's (`AHbz`). A field is its id, and for abilities, upgrades and doodads
+its `level` and data `column` (`Data A` is 1).
+
+| tool         | does |
+|--------------|------|
+| `obj_list`   | the objects: id, base, table (`original` / `custom`), name (when the file sets it), how many fields; filter by text or table, page |
+| `obj_get`    | one object's fields: key (`Hbz1[3].A`), id, level, column, the type stored and the value; with `game` the field's name and type |
+| `obj_text`   | the file as the editor's text (BNI), with names and types as comments, paged by lines |
+| `obj_check`  | the problems the game's metadata shows (wrong types, values past World Editor's limits, unknown fields, levels and columns, fields of other objects), each with its object and key; needs `game` |
+| `obj_set`    | writes one field, or removes it (`null`); a number takes the field's type (integer, real, unreal) from the metadata |
+| `obj_new`    | adds a custom object: its id and the standard object it starts from |
+| `obj_delete` | removes an object |
+
+Names that are `TRIGSTR_...` are keys into the map's `war3map.wts`.
+
 ## Using it
 
 ```sh
@@ -83,9 +110,10 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `rpc.rs`: the protocol: `initialize`, `ping`, `tools/list`, `tools/call`;
 - `slk.rs`: the SLK tools;
 - `mpq.rs`: the MPQ tools;
+- `obj.rs`: the object data tools;
 - `source.rs`: reading a file from disk or from inside an archive.
 
-To come: object data (`w3abdhqtu-rs`).
+To come: the map's strings (`war3map.wts`), so names show as text.
 
 ## Tests
 

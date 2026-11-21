@@ -20,25 +20,10 @@ fn initialize_and_list() {
             .iter()
             .map(|t| t["name"].as_str().unwrap().to_string())
             .collect();
-    assert_eq!(
-        names,
-        [
-            "slk_info",
-            "slk_read",
-            "slk_get",
-            "slk_set",
-            "slk_lint",
-            "mpq_info",
-            "mpq_list",
-            "mpq_read",
-            "mpq_extract",
-            "mpq_verify",
-            "mpq_create",
-            "mpq_add",
-            "mpq_remove",
-            "mpq_rename",
-        ]
-    );
+    let want = "slk_info slk_read slk_get slk_set slk_lint \
+                mpq_info mpq_list mpq_read mpq_extract mpq_verify mpq_create mpq_add mpq_remove mpq_rename \
+                obj_list obj_get obj_text obj_check obj_set obj_new obj_delete";
+    assert_eq!(names, want.split_whitespace().collect::<Vec<_>>());
 }
 
 #[test]
