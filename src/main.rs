@@ -9,6 +9,7 @@ mod obj;
 mod rpc;
 mod slk;
 mod source;
+mod w3c;
 mod wts;
 
 use std::io::{BufRead, Write};

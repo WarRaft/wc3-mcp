@@ -6,7 +6,8 @@ It speaks JSON-RPC 2.0 over stdio, one message per line, and is built on
 the same crates as the [`wc3-rs`](../wc3-rs) editor:
 [`slk-rs`](../slk-rs) for SLK tables, [`storm-rs`](../storm-rs) for MPQ
 archives and maps, [`w3abdhqtu-rs`](../w3abdhqtu-rs) for object data,
-[`wts-rs`](../wts-rs) for string tables.
+[`wts-rs`](../wts-rs) for string tables, [`w3c-rs`](../w3c-rs) for
+cameras.
 
 ## Tools
 
@@ -112,6 +113,26 @@ breaks.
 | `wts_set`     | writes, adds or removes (`null`) one string, changing only its lines |
 | `wts_lint`    | parse errors and lint warnings (a number defined twice) |
 
+### Cameras
+
+A map's `war3map.w3c`, with `w3c-rs`: the cameras World Editor places,
+`gg_cam_<name>` in the script. Read from disk (`path`) or from inside a
+map (`archive`; `war3map.w3c` by default), changed on disk.
+
+The file doesn't say its layout: since 1.31 each camera also has a local
+pitch, yaw and roll. Which game the map is for is the first four bytes of
+its `war3map.w3i` (18 Reign of Chaos, 25 The Frozen Throne, 28 1.31, 31
+1.32), read next to the file, in the same folder or the same map; without
+one, the layout is 1.27a's. `w3i_version` sets it by hand. Every answer
+says the layout and where it came from (`layout_from`).
+
+| tool         | does |
+|--------------|------|
+| `w3c_list`   | the cameras: index, name, the script's variable, every field |
+| `w3c_set`    | changes fields or the name of one camera (by index or name) |
+| `w3c_new`    | adds a camera, World Editor's defaults for what's left out; makes the file if there's none |
+| `w3c_delete` | removes a camera |
+
 ## Planned: JASS
 
 Not built yet. These are the next tools, and what the modules underneath
@@ -167,6 +188,7 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `mpq.rs`: the MPQ tools;
 - `obj.rs`: the object data tools;
 - `wts.rs`: the string table tools;
+- `w3c.rs`: the camera tools;
 - `source.rs`: reading a file from disk or from inside an archive.
 
 The game's metadata comes from the editor's server, used as a library
