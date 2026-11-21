@@ -22,7 +22,22 @@ fn initialize_and_list() {
             .collect();
     assert_eq!(
         names,
-        ["slk_info", "slk_read", "slk_get", "slk_set", "slk_lint"]
+        [
+            "slk_info",
+            "slk_read",
+            "slk_get",
+            "slk_set",
+            "slk_lint",
+            "mpq_info",
+            "mpq_list",
+            "mpq_read",
+            "mpq_extract",
+            "mpq_verify",
+            "mpq_create",
+            "mpq_add",
+            "mpq_remove",
+            "mpq_rename",
+        ]
     );
 }
 

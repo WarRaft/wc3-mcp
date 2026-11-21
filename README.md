@@ -42,6 +42,29 @@ reason, so the model reads what went wrong.
 → {"total":1,"offset":0,"rows":[{"row":10,"goldcost":135,"lumbercost":0,"HP":420}]}
 ```
 
+### MPQ archives and maps
+
+Archives (`.mpq`) and maps (`.w3x`, `.w3m`), with `storm-rs`. Names inside
+use `\` (`/` works too); masks are StormLib's, `*` and `?` in any case over
+the whole name (`Units\*.slk`, `war3map.*`). An archive without a
+`(listfile)`, as most protected maps are, only lets you find a file you can
+name: `listfiles` takes files on disk with more names, one per line (the
+game's own list, say).
+
+| tool          | does |
+|---------------|------|
+| `mpq_info`    | the header and tables: format version, sizes, how many files, how many with a known name, whether it has `(listfile)`, `(attributes)`, `(signature)` |
+| `mpq_list`    | the files with a known name, sorted: name, size, compressed size, block flags; `masks`, `offset` / `limit` (500 by default, 5000 at most); `unnamed` counts the rest |
+| `mpq_read`    | one file: UTF-8 text as text, from `offset`, up to 200,000 bytes at a time (`more` says there's more); anything else as its size and the hex of up to 4096 bytes |
+| `mpq_extract` | files into a folder on disk, the name's `\` parts as folders; a name that would leave it (`..\x`) is skipped and reported |
+| `mpq_verify`  | the files that fail the CRC32 / MD5 of `(attributes)` or their sector CRCs |
+| `mpq_create`  | a new archive of every file under a folder, with `(listfile)` and `(attributes)`; never overwrites |
+| `mpq_add`     | adds or replaces a file, from a file on disk (`file`) or text (`text`) |
+| `mpq_remove`  | removes files by name |
+| `mpq_rename`  | renames a file |
+
+A SLK table inside an archive is read with the `slk_*` tools and `archive`.
+
 ## Using it
 
 ```sh
@@ -59,10 +82,10 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 
 - `rpc.rs`: the protocol: `initialize`, `ping`, `tools/list`, `tools/call`;
 - `slk.rs`: the SLK tools;
+- `mpq.rs`: the MPQ tools;
 - `source.rs`: reading a file from disk or from inside an archive.
 
-To come: MPQ archives themselves (`storm-rs`: list, extract) and object
-data (`w3abdhqtu-rs`).
+To come: object data (`w3abdhqtu-rs`).
 
 ## Tests
 
