@@ -3,7 +3,8 @@
 //! - `initialize` answers with the protocol version the client asked for,
 //!   the server's name and that it has tools;
 //! - `tools/list` lists them ([`crate::slk::tools`], [`crate::mpq::tools`],
-//!   [`crate::obj::tools`], [`crate::wts::tools`], [`crate::w3c::tools`]);
+//!   [`crate::obj::tools`], [`crate::wts::tools`], [`crate::w3c::tools`],
+//!   [`crate::w3e::tools`]);
 //! - `tools/call` runs one: its answer is text (JSON for data), and a
 //!   failure is a result with `isError`, so the model reads why;
 //! - `ping` answers `{}`; notifications (no `id`) get no answer.
@@ -55,7 +56,9 @@ fn initialize(params: &Value) -> Value {
             TRIGSTR_<n> values show as their text from the map's war3map.wts. String tables \
             (war3map.wts): wts_list, wts_get, wts_resolve, wts_lint, and wts_set to change one. \
             Cameras (war3map.w3c): w3c_list, and w3c_set, w3c_new, w3c_delete; the layout \
-            (1.31 added a local rotation) comes from the map's war3map.w3i, else 1.27a's.",
+            (1.31 added a local rotation) comes from the map's war3map.w3i, else 1.27a's. \
+            Terrain (war3map.w3e): w3e_info for tilesets and size, w3e_points for a region \
+            of the grid (column, row from the bottom left), w3e_set to change one.",
     })
 }
 
@@ -66,6 +69,7 @@ fn call(params: &Value) -> Value {
         .or_else(|| crate::obj::call(name, &args))
         .or_else(|| crate::wts::call(name, &args))
         .or_else(|| crate::w3c::call(name, &args))
+        .or_else(|| crate::w3e::call(name, &args))
         .unwrap_or_else(|| crate::slk::call(name, &args));
     match answer {
         Ok(v) => {
@@ -81,13 +85,14 @@ fn call(params: &Value) -> Value {
 }
 
 /// Every tool: the SLK ones, the MPQ ones, the object data ones, the
-/// string table ones, the camera ones.
+/// string table ones, the camera ones, the terrain ones.
 fn tools() -> Value {
     let mut all = crate::slk::tools().as_array().cloned().unwrap_or_default();
     all.extend(crate::mpq::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::obj::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::wts::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::w3c::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::w3e::tools().as_array().cloned().unwrap_or_default());
     Value::Array(all)
 }
 

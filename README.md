@@ -7,7 +7,7 @@ the same crates as the [`wc3-rs`](../wc3-rs) editor:
 [`slk-rs`](../slk-rs) for SLK tables, [`storm-rs`](../storm-rs) for MPQ
 archives and maps, [`w3abdhqtu-rs`](../w3abdhqtu-rs) for object data,
 [`wts-rs`](../wts-rs) for string tables, [`w3c-rs`](../w3c-rs) for
-cameras.
+cameras, [`w3e-rs`](../w3e-rs) for terrain.
 
 ## Tools
 
@@ -133,6 +133,21 @@ says the layout and where it came from (`layout_from`).
 | `w3c_new`    | adds a camera, World Editor's defaults for what's left out; makes the file if there's none |
 | `w3c_delete` | removes a camera |
 
+### Terrain
+
+A map's `war3map.w3e`, with `w3e-rs`: its tilesets, and the grid of
+points with their height, water, ground texture, cliffs and flags. Read
+from disk (`path`) or from inside a map (`archive`; `war3map.w3e` by
+default), changed on disk. A point is addressed by column `x` and row `y`
+from the bottom left; its world position is the grid's offset plus 128
+per step.
+
+| tool         | does |
+|--------------|------|
+| `w3e_info`   | version, base tileset, the ground and cliff textures with how many points use each, the size, the world bounds |
+| `w3e_points` | the points of a region (4096 at most): world position, height (and from zero), water, texture (index and rawcode), ramp, blight, water, boundary, edge, variations, cliff level and texture |
+| `w3e_set`    | sets fields on every point of a region; a texture by index or rawcode from the ground list; values are checked against the file first |
+
 ## Planned: JASS
 
 Not built yet. These are the next tools, and what the modules underneath
@@ -189,6 +204,7 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `obj.rs`: the object data tools;
 - `wts.rs`: the string table tools;
 - `w3c.rs`: the camera tools;
+- `w3e.rs`: the terrain tools;
 - `source.rs`: reading a file from disk or from inside an archive.
 
 The game's metadata comes from the editor's server, used as a library

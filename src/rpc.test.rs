@@ -24,7 +24,8 @@ fn initialize_and_list() {
                 mpq_info mpq_list mpq_read mpq_extract mpq_verify mpq_create mpq_add mpq_remove mpq_rename \
                 obj_list obj_get obj_text obj_check obj_set obj_new obj_delete \
                 wts_list wts_get wts_resolve wts_set wts_lint \
-                w3c_list w3c_set w3c_new w3c_delete";
+                w3c_list w3c_set w3c_new w3c_delete \
+                w3e_info w3e_points w3e_set";
     assert_eq!(names, want.split_whitespace().collect::<Vec<_>>());
 }
 
