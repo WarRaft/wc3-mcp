@@ -5,7 +5,7 @@
 //! - `tools/list` lists them ([`crate::slk::tools`], [`crate::mpq::tools`],
 //!   [`crate::obj::tools`], [`crate::wts::tools`], [`crate::w3c::tools`],
 //!   [`crate::w3e::tools`], [`crate::w3i::tools`],
-//!   [`crate::w3r::tools`], [`crate::w3s::tools`]);
+//!   [`crate::w3r::tools`], [`crate::w3s::tools`], [`crate::wpm::tools`]);
 //! - `tools/call` runs one: its answer is text (JSON for data), and a
 //!   failure is a result with `isError`, so the model reads why;
 //! - `ping` answers `{}`; notifications (no `id`) get no answer.
@@ -63,7 +63,8 @@ fn initialize(params: &Value) -> Value {
             Map info (war3map.w3i: name, description, players, forces, tech tree, random tables): \
             w3i_text gives it as text, w3i_write writes that text back after checking it. \
             Regions (war3map.w3r): w3r_list, and w3r_set, w3r_new, w3r_delete; a region by name or index. \
-            Sounds (war3map.w3s): w3s_list, and w3s_set, w3s_new, w3s_delete; a sound by its variable or index.",
+            Sounds (war3map.w3s): w3s_list, and w3s_set, w3s_new, w3s_delete; a sound by its variable or index. \
+            Pathing (war3map.wpm): wpm_info, wpm_image for a picture (PNG), wpm_cells for a region, wpm_set to change one.",
     })
 }
 
@@ -78,8 +79,14 @@ fn call(params: &Value) -> Value {
         .or_else(|| crate::w3i::call(name, &args))
         .or_else(|| crate::w3r::call(name, &args))
         .or_else(|| crate::w3s::call(name, &args))
+        .or_else(|| crate::wpm::call(name, &args))
         .unwrap_or_else(|| crate::slk::call(name, &args));
     match answer {
+        // A tool that answers with more than text (a picture): its content
+        // as it is.
+        Ok(v) if v.get("mcp_content").is_some_and(Value::is_array) => {
+            json!({"content": v["mcp_content"], "isError": false})
+        }
         Ok(v) => {
             let text = match v {
                 Value::String(s) => s,
@@ -104,6 +111,7 @@ fn tools() -> Value {
     all.extend(crate::w3i::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::w3r::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::w3s::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::wpm::tools().as_array().cloned().unwrap_or_default());
     Value::Array(all)
 }
 

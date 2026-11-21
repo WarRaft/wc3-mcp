@@ -7,7 +7,7 @@ the same crates as the [`wc3-rs`](../wc3-rs) editor:
 [`slk-rs`](../slk-rs) for SLK tables, [`storm-rs`](../storm-rs) for MPQ
 archives and maps, [`w3abdhqtu-rs`](../w3abdhqtu-rs) for object data,
 [`wts-rs`](../wts-rs) for string tables, [`w3c-rs`](../w3c-rs) for
-cameras, [`w3r-rs`](../w3r-rs) for regions, [`w3s-rs`](../w3s-rs) for sounds, [`w3e-rs`](../w3e-rs) for
+cameras, [`w3r-rs`](../w3r-rs) for regions, [`w3s-rs`](../w3s-rs) for sounds, [`wpm-rs`](../wpm-rs) for pathing, [`w3e-rs`](../w3e-rs) for
 terrain, [`w3i-rs`](../w3i-rs) for map info.
 
 ## Tools
@@ -174,6 +174,27 @@ sound is named by its variable or its index in the file. A number may be
 Variables stay unique: a change that repeats one is refused, nothing
 written.
 
+### Pathing
+
+A map's `war3map.wpm`, with `wpm-rs`: for every cell (four per terrain
+cell, 32 world units) whether units can walk, fly, build or sail there,
+blight, the boundary. Read from disk (`path`) or from inside a map
+(`archive`; `war3map.wpm` by default), changed on disk. A cell is
+addressed by column `x` and row `y` from the bottom left; with the map's
+`war3map.w3e` beside the file, cells have world positions too. A flag is
+named by its bit or its name (`no walking`, `0x02`).
+
+| tool        | does |
+|-------------|------|
+| `wpm_info`  | the size, how many cells have each flag (and what share), the world bounds |
+| `wpm_image` | a picture, PNG: the pathing as the game's pathing textures draw it (red no walking, green no flying, blue no building), or one flag in white; a region crops it, `scale` sets pixels per cell |
+| `wpm_cells` | the cells of a region (4096 at most): flags as a number and by name, world position |
+| `wpm_set`   | sets and clears flags on every cell of a region |
+
+`wpm_image` answers with MCP image content (a text saying what's drawn,
+then the PNG), so a model can look at the map. The PNG is written by
+`png.rs` (zlib from `flate2`).
+
 ### Terrain
 
 A map's `war3map.w3e`, with `w3e-rs`: its tilesets, and the grid of
@@ -261,6 +282,7 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `w3c.rs`: the camera tools;
 - `w3r.rs`: the region tools;
 - `w3s.rs`: the sound tools;
+- `wpm.rs`: the pathing tools; `png.rs`: PNG and base64 for pictures;
 - `w3e.rs`: the terrain tools;
 - `w3i.rs`: the map info tools;
 - `source.rs`: reading a file from disk or from inside an archive.

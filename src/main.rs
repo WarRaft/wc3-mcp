@@ -6,6 +6,7 @@
 
 mod mpq;
 mod obj;
+mod png;
 mod rpc;
 mod slk;
 mod source;
@@ -14,6 +15,7 @@ mod w3e;
 mod w3i;
 mod w3r;
 mod w3s;
+mod wpm;
 mod wts;
 
 use std::io::{BufRead, Write};
