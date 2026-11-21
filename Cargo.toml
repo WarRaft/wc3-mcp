@@ -1,0 +1,16 @@
+[package]
+name = "wc3-mcp"
+version = "0.1.0"
+edition = "2024"
+description = "An MCP server (stdio) for Warcraft III's files: SLK tables to read, query and edit, from disk or from inside an MPQ archive or a map"
+license = "CC0-1.0"
+
+[[bin]]
+name = "wc3-mcp"
+path = "src/main.rs"
+
+[dependencies]
+slk-rs = { path = "../slk-rs" }
+storm-rs = { path = "../storm-rs" }
+# Keys in insertion order: a row's columns stay in the table's order.
+serde_json = { version = "1.0.145", features = ["preserve_order"] }
