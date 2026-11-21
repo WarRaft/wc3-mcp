@@ -7,8 +7,8 @@ the same crates as the [`wc3-rs`](../wc3-rs) editor:
 [`slk-rs`](../slk-rs) for SLK tables, [`storm-rs`](../storm-rs) for MPQ
 archives and maps, [`w3abdhqtu-rs`](../w3abdhqtu-rs) for object data,
 [`wts-rs`](../wts-rs) for string tables, [`w3c-rs`](../w3c-rs) for
-cameras, [`w3e-rs`](../w3e-rs) for terrain, [`w3i-rs`](../w3i-rs) for
-map info.
+cameras, [`w3r-rs`](../w3r-rs) for regions, [`w3e-rs`](../w3e-rs) for
+terrain, [`w3i-rs`](../w3i-rs) for map info.
 
 ## Tools
 
@@ -134,6 +134,25 @@ says the layout and where it came from (`layout_from`).
 | `w3c_new`    | adds a camera, World Editor's defaults for what's left out; makes the file if there's none |
 | `w3c_delete` | removes a camera |
 
+### Regions
+
+A map's `war3map.w3r`, with `w3r-rs`: the regions World Editor places
+(`gg_rct_*` in the script). Read from disk (`path`) or from inside a map
+(`archive`; `war3map.w3r` by default), changed on disk. A region is named
+by its name or by its `index` (World Editor's number for it, which stays
+when others are removed).
+
+| tool         | does |
+|--------------|------|
+| `w3r_list`   | every region: name, variable, index, left, bottom, right, top, weather, sound, color |
+| `w3r_set`    | changes some fields of a region |
+| `w3r_new`    | adds a region (a new file when there's none): the rectangle is needed; the next index, `Region NNN`, no weather, no sound, white otherwise |
+| `w3r_delete` | removes a region |
+
+Names and indexes stay unique, and the rectangle's left isn't past its
+right (nor bottom past top): a change that breaks one is refused,
+nothing written.
+
 ### Terrain
 
 A map's `war3map.w3e`, with `w3e-rs`: its tilesets, and the grid of
@@ -219,6 +238,7 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `obj.rs`: the object data tools;
 - `wts.rs`: the string table tools;
 - `w3c.rs`: the camera tools;
+- `w3r.rs`: the region tools;
 - `w3e.rs`: the terrain tools;
 - `w3i.rs`: the map info tools;
 - `source.rs`: reading a file from disk or from inside an archive.
