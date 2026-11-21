@@ -224,6 +224,67 @@ map (`archive`; `war3map.w3i` by default), written on disk.
 | `w3i_text`  | the text form; the comment after a value says what it means |
 | `w3i_write` | writes the text form back; it's checked first, and every error comes back with its line, nothing written |
 
+### Imports, minimap icons, custom script, shadows
+
+Read from disk (`path`) or from inside a map (`archive`; the map's file
+by default), written on disk.
+
+| tool        | does |
+|-------------|------|
+| `imp_list`  | `war3map.imp`, the imported files: each one's path, where it is in the map (`war3mapImported\` and its name unless it has a custom path), its flags by name |
+| `imp_text`, `imp_write` | its text form (`imp-rs`), and back after checking it |
+| `mmp_list`  | `war3map.mmp`, the minimap icons: kind (and its name), place, color |
+| `mmp_text`, `mmp_write` | its text form (`mmp-rs`), and back |
+| `wct_text`, `wct_write` | `war3map.wct`, the custom script: the map's header code and each trigger's custom text after `// @wct` marker lines (`script: "lua"` for `--`), and back |
+| `shd_image` | `war3map.shd`, a picture (PNG) of where trees and buildings cast shadow; its size from `war3map.w3e` beside it |
+
+### Doodads and units
+
+`war3map.doo` (doodads and destructables) and `war3mapUnits.doo` (units,
+buildings, items, start locations), with `doo-rs`; which one, the file's
+name says, and the layout (1.32 added skins) the `war3map.w3i` beside
+it. A big map places tens of thousands of things, so they're listed
+with filters and changed one by one, by `index`, their place in the
+file. A thing's text is the editor's: a `[doodad]` or `[unit]` section.
+
+| tool         | does |
+|--------------|------|
+| `doo_list`   | things placed, filtered by type ids, owner and a rectangle, a page at a time (`offset`, `limit` 200): position, angle, scale; flags and life; owner, hp, mana, level, items, how it's random |
+| `doo_get`    | the text of some, by index |
+| `doo_set`    | replaces one with a section of text |
+| `doo_new`    | adds sections of text at the end |
+| `doo_delete` | removes some, by index |
+
+### Triggers
+
+`war3map.wtg`, the GUI triggers, with `wtg-rs`. How many parameters each
+function takes is in World Editor's `UI\TriggerData.txt`, not the file:
+every tool takes `game` (and `roots`, where a modded editor's file
+wins). A trigger's text is the editor's: a `[trigger]` section, its
+events, conditions and actions as lines of calls
+(`action=TriggerSleepAction("2.00")`). Adding or removing triggers keeps
+the `war3map.wct` beside the file in step (a piece of code per trigger).
+
+| tool         | does |
+|--------------|------|
+| `wtg_list`   | categories, variables, and the triggers (filtered by category and name, a page at a time): name, category, flags, how many events, conditions and actions |
+| `wtg_get`    | the text of triggers, by name or index |
+| `wtg_set`    | replaces one with a `[trigger]` section; every function is checked against `TriggerData.txt` |
+| `wtg_new`    | adds `[category]`, `[variable]` and `[trigger]` sections |
+| `wtg_delete` | removes triggers, and their pieces of `war3map.wct` |
+| `wtg_text`, `wtg_write` | the whole file as text, and back |
+
+### Object collections
+
+`.w3o`, World Editor's Export All Object Data, with `w3o-rs`: every kind
+of object data in one file. The `obj_` tools work on each kind's file.
+
+| tool        | does |
+|-------------|------|
+| `w3o_info`  | which kinds it has, how many objects each |
+| `w3o_split` | writes each kind's `war3map.w3?` to a folder |
+| `w3o_join`  | writes a `.w3o` from the object data in a folder or a map |
+
 ## Planned: JASS
 
 Not built yet. These are the next tools, and what the modules underneath
@@ -285,6 +346,8 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `wpm.rs`: the pathing tools; `png.rs`: PNG and base64 for pictures;
 - `w3e.rs`: the terrain tools;
 - `w3i.rs`: the map info tools;
+- `imp.rs`, `mmp.rs`, `wct.rs`, `shd.rs`: imports, minimap icons, custom script, shadows;
+- `doo.rs`: doodads and units placed; `wtg.rs`: triggers; `w3o.rs`: object collections;
 - `source.rs`: reading a file from disk or from inside an archive.
 
 The game's metadata comes from the editor's server, used as a library

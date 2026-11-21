@@ -25,7 +25,10 @@ fn initialize_and_list() {
                 obj_list obj_get obj_text obj_check obj_set obj_new obj_delete \
                 wts_list wts_get wts_resolve wts_set wts_lint \
                 w3c_list w3c_set w3c_new w3c_delete \
-                w3e_info w3e_points w3e_set w3i_text w3i_write w3r_list w3r_set w3r_new w3r_delete w3s_list w3s_set w3s_new w3s_delete wpm_info wpm_image wpm_cells wpm_set";
+                w3e_info w3e_points w3e_set w3i_text w3i_write w3r_list w3r_set w3r_new w3r_delete w3s_list w3s_set w3s_new w3s_delete wpm_info wpm_image wpm_cells wpm_set \
+                imp_list imp_text imp_write mmp_list mmp_text mmp_write wct_text wct_write shd_image \
+                doo_list doo_get doo_set doo_new doo_delete wtg_list wtg_get wtg_set wtg_new wtg_delete wtg_text wtg_write \
+                w3o_info w3o_split w3o_join";
     assert_eq!(names, want.split_whitespace().collect::<Vec<_>>());
 }
 

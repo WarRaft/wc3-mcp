@@ -66,3 +66,47 @@ pub fn game_schema() -> serde_json::Value {
 pub fn names(args: &serde_json::Value) -> wc3_server::names::Names {
     wc3_server::names::names(&lookup(args))
 }
+
+/// The file a tool reads: `args.path`, or `default` inside `args.archive`
+/// when there's no path; and the archive.
+pub fn file<'a>(args: &'a serde_json::Value, default: &'a str) -> Result<(&'a str, Option<&'a str>), String> {
+    let archive = args.get("archive").and_then(serde_json::Value::as_str);
+    match (args.get("path").and_then(serde_json::Value::as_str), archive) {
+        (Some(p), _) => Ok((p, archive)),
+        (None, Some(_)) => Ok((default, archive)),
+        (None, None) => Err("`path` is missing".into()),
+    }
+}
+
+/// The bytes of the file named `name` beside `path` (the same folder, or
+/// the same folder inside `archive`).
+pub fn sibling(path: &str, archive: Option<&str>, name: &str) -> Option<Vec<u8>> {
+    let beside = match archive {
+        Some(_) => match path.rfind(['\\', '/']) {
+            Some(i) => format!("{}{name}", &path[..=i]),
+            None => name.to_string(),
+        },
+        None => Path::new(path).with_file_name(name).to_string_lossy().into_owned(),
+    };
+    read_bytes(&beside, archive).ok()
+}
+
+/// The errors of a text form, as one message.
+pub fn text_errors<'a>(errors: impl IntoIterator<Item = (usize, &'a str)>) -> String {
+    let lines: Vec<String> = errors.into_iter().map(|(l, m)| format!("line {l}: {m}")).collect();
+    format!("nothing written:\n{}", lines.join("\n"))
+}
+
+/// The text argument `key`.
+pub fn arg_str<'a>(args: &'a serde_json::Value, key: &str) -> Result<&'a str, String> {
+    args.get(key).and_then(serde_json::Value::as_str).ok_or(format!("`{key}` is missing"))
+}
+
+/// The schemas of `path` (for `default`) and `archive`.
+pub fn path_schema(default: &str, what: &str) -> serde_json::Value {
+    serde_json::json!({"type": "string", "description": format!("{what}: {default} on disk, or with `archive` its name inside ({default} when left out)")})
+}
+
+pub fn archive_schema() -> serde_json::Value {
+    serde_json::json!({"type": "string", "description": "A map (.w3x, .w3m) to read the file from"})
+}

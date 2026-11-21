@@ -5,7 +5,9 @@
 //! - `tools/list` lists them ([`crate::slk::tools`], [`crate::mpq::tools`],
 //!   [`crate::obj::tools`], [`crate::wts::tools`], [`crate::w3c::tools`],
 //!   [`crate::w3e::tools`], [`crate::w3i::tools`],
-//!   [`crate::w3r::tools`], [`crate::w3s::tools`], [`crate::wpm::tools`]);
+//!   [`crate::w3r::tools`], [`crate::w3s::tools`], [`crate::wpm::tools`], [`crate::imp::tools`],
+//!   [`crate::mmp::tools`], [`crate::wct::tools`], [`crate::shd::tools`],
+//!   [`crate::doo::tools`], [`crate::wtg::tools`], [`crate::w3o::tools`]);
 //! - `tools/call` runs one: its answer is text (JSON for data), and a
 //!   failure is a result with `isError`, so the model reads why;
 //! - `ping` answers `{}`; notifications (no `id`) get no answer.
@@ -64,7 +66,14 @@ fn initialize(params: &Value) -> Value {
             w3i_text gives it as text, w3i_write writes that text back after checking it. \
             Regions (war3map.w3r): w3r_list, and w3r_set, w3r_new, w3r_delete; a region by name or index. \
             Sounds (war3map.w3s): w3s_list, and w3s_set, w3s_new, w3s_delete; a sound by its variable or index. \
-            Pathing (war3map.wpm): wpm_info, wpm_image for a picture (PNG), wpm_cells for a region, wpm_set to change one.",
+            Pathing (war3map.wpm): wpm_info, wpm_image for a picture (PNG), wpm_cells for a region, wpm_set to change one. \
+            Imported files (war3map.imp): imp_list, imp_text, imp_write. Minimap icons (war3map.mmp): \
+            mmp_list, mmp_text, mmp_write. Custom script (war3map.wct): wct_text, wct_write. \
+            Shadow map (war3map.shd): shd_image. Doodads and units placed (war3map.doo, \
+            war3mapUnits.doo): doo_list with filters, doo_get for the text of some, doo_set, doo_new, \
+            doo_delete. GUI triggers (war3map.wtg; give game=[...] for UI\\TriggerData.txt): wtg_list, \
+            wtg_get for a trigger's text, wtg_set, wtg_new, wtg_delete, wtg_text and wtg_write for the \
+            whole file. Object collections (.w3o): w3o_info, w3o_split into each kind's file, w3o_join.",
     })
 }
 
@@ -80,6 +89,13 @@ fn call(params: &Value) -> Value {
         .or_else(|| crate::w3r::call(name, &args))
         .or_else(|| crate::w3s::call(name, &args))
         .or_else(|| crate::wpm::call(name, &args))
+        .or_else(|| crate::imp::call(name, &args))
+        .or_else(|| crate::mmp::call(name, &args))
+        .or_else(|| crate::wct::call(name, &args))
+        .or_else(|| crate::shd::call(name, &args))
+        .or_else(|| crate::doo::call(name, &args))
+        .or_else(|| crate::wtg::call(name, &args))
+        .or_else(|| crate::w3o::call(name, &args))
         .unwrap_or_else(|| crate::slk::call(name, &args));
     match answer {
         // A tool that answers with more than text (a picture): its content
@@ -112,6 +128,13 @@ fn tools() -> Value {
     all.extend(crate::w3r::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::w3s::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::wpm::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::imp::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::mmp::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::wct::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::shd::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::doo::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::wtg::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::w3o::tools().as_array().cloned().unwrap_or_default());
     Value::Array(all)
 }
 
