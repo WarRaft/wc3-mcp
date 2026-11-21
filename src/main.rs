@@ -11,6 +11,7 @@ mod slk;
 mod source;
 mod w3c;
 mod w3e;
+mod w3i;
 mod wts;
 
 use std::io::{BufRead, Write};

@@ -25,7 +25,7 @@ fn initialize_and_list() {
                 obj_list obj_get obj_text obj_check obj_set obj_new obj_delete \
                 wts_list wts_get wts_resolve wts_set wts_lint \
                 w3c_list w3c_set w3c_new w3c_delete \
-                w3e_info w3e_points w3e_set";
+                w3e_info w3e_points w3e_set w3i_text w3i_write";
     assert_eq!(names, want.split_whitespace().collect::<Vec<_>>());
 }
 

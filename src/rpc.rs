@@ -4,7 +4,7 @@
 //!   the server's name and that it has tools;
 //! - `tools/list` lists them ([`crate::slk::tools`], [`crate::mpq::tools`],
 //!   [`crate::obj::tools`], [`crate::wts::tools`], [`crate::w3c::tools`],
-//!   [`crate::w3e::tools`]);
+//!   [`crate::w3e::tools`], [`crate::w3i::tools`]);
 //! - `tools/call` runs one: its answer is text (JSON for data), and a
 //!   failure is a result with `isError`, so the model reads why;
 //! - `ping` answers `{}`; notifications (no `id`) get no answer.
@@ -58,7 +58,9 @@ fn initialize(params: &Value) -> Value {
             Cameras (war3map.w3c): w3c_list, and w3c_set, w3c_new, w3c_delete; the layout \
             (1.31 added a local rotation) comes from the map's war3map.w3i, else 1.27a's. \
             Terrain (war3map.w3e): w3e_info for tilesets and size, w3e_points for a region \
-            of the grid (column, row from the bottom left), w3e_set to change one.",
+            of the grid (column, row from the bottom left), w3e_set to change one. \
+            Map info (war3map.w3i: name, description, players, forces, tech tree, random tables): \
+            w3i_text gives it as text, w3i_write writes that text back after checking it.",
     })
 }
 
@@ -70,6 +72,7 @@ fn call(params: &Value) -> Value {
         .or_else(|| crate::wts::call(name, &args))
         .or_else(|| crate::w3c::call(name, &args))
         .or_else(|| crate::w3e::call(name, &args))
+        .or_else(|| crate::w3i::call(name, &args))
         .unwrap_or_else(|| crate::slk::call(name, &args));
     match answer {
         Ok(v) => {
@@ -93,6 +96,7 @@ fn tools() -> Value {
     all.extend(crate::wts::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::w3c::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::w3e::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::w3i::tools().as_array().cloned().unwrap_or_default());
     Value::Array(all)
 }
 

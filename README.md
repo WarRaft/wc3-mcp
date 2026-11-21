@@ -7,7 +7,8 @@ the same crates as the [`wc3-rs`](../wc3-rs) editor:
 [`slk-rs`](../slk-rs) for SLK tables, [`storm-rs`](../storm-rs) for MPQ
 archives and maps, [`w3abdhqtu-rs`](../w3abdhqtu-rs) for object data,
 [`wts-rs`](../wts-rs) for string tables, [`w3c-rs`](../w3c-rs) for
-cameras, [`w3e-rs`](../w3e-rs) for terrain.
+cameras, [`w3e-rs`](../w3e-rs) for terrain, [`w3i-rs`](../w3i-rs) for
+map info.
 
 ## Tools
 
@@ -148,6 +149,20 @@ per step.
 | `w3e_points` | the points of a region (4096 at most): world position, height (and from zero), water, texture (index and rawcode), ramp, blight, water, boundary, edge, variations, cliff level and texture |
 | `w3e_set`    | sets fields on every point of a region; a texture by index or rawcode from the ground list; values are checked against the file first |
 
+### Map info
+
+A map's `war3map.w3i` (the Scenario menu: name, author, description,
+camera bounds, flags, loading screen, fog, players, forces, upgrades,
+techs, random tables), with `w3i-rs`, as its text form: the same BNI the
+wc3-rs editor shows, a `[w3i]` section, then a section per player, force,
+upgrade, tech and random table. Read from disk (`path`) or from inside a
+map (`archive`; `war3map.w3i` by default), written on disk.
+
+| tool        | does |
+|-------------|------|
+| `w3i_text`  | the text form; the comment after a value says what it means |
+| `w3i_write` | writes the text form back; it's checked first, and every error comes back with its line, nothing written |
+
 ## Planned: JASS
 
 Not built yet. These are the next tools, and what the modules underneath
@@ -205,6 +220,7 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `wts.rs`: the string table tools;
 - `w3c.rs`: the camera tools;
 - `w3e.rs`: the terrain tools;
+- `w3i.rs`: the map info tools;
 - `source.rs`: reading a file from disk or from inside an archive.
 
 The game's metadata comes from the editor's server, used as a library
