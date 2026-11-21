@@ -80,7 +80,7 @@ pub fn tools() -> Value {
                     "path": disk,
                     "game": game,
                     "object": object,
-                    "field": {"type": "string", "description": "The field id: Hbz1, unam, uhpm"},
+                    "field": {"type": "string", "description": "The field: its name in the game's tables as obj_get keys it (Cool, DataA, HP) or its id (acdn, Hbz1, uhpm)"},
                     "level": {"type": "integer", "minimum": 0},
                     "column": {"type": "integer", "minimum": 0, "description": "The data column, Data A is 1"},
                     "value": {"type": ["string", "number", "null"], "description": "The new value; null removes the field"},
@@ -297,21 +297,10 @@ fn list(f: &File, args: &Value) -> Result<Value, String> {
     )
 }
 
-fn field_json(m: &Mod, meta: &Metadata) -> Value {
+fn field_json(m: &Mod, kind: Kind, meta: &Metadata, keys: &w3abdhqtu_rs::Keys) -> Value {
     let mut obj = Map::new();
-    let key = {
-        let mut k = id_text(m.field);
-        if m.level != 0 {
-            k += &format!("[{}]", m.level);
-        }
-        if m.column != 0 {
-            k += &match m.column {
-                c @ 1..=26 => format!(".{}", (b'A' + (c - 1) as u8) as char),
-                c => format!(".{c}"),
-            };
-        }
-        k
-    };
+    // As the text form writes it: by its name in the game's tables.
+    let key = w3abdhqtu_rs::field_key(m, kind, meta, keys);
     obj.insert("key".into(), json!(key));
     obj.insert("field".into(), json!(id_text(m.field)));
     if let Some(f) = meta.get(m.field) {
@@ -333,10 +322,18 @@ fn get(f: &File, args: &Value) -> Result<Value, String> {
     } else {
         &f.data.originals[i]
     };
+    let keys = f.meta.keys(f.data.kind, o.base);
     let sets: Vec<Value> = o
         .sets
         .iter()
-        .map(|s| json!({"flags": s.flags, "fields": s.mods.iter().map(|m| field_json(m, &f.meta)).collect::<Vec<_>>()}))
+        .map(|s| {
+            let fields: Vec<Value> = s
+                .mods
+                .iter()
+                .map(|m| field_json(m, f.data.kind, &f.meta, &keys))
+                .collect();
+            json!({"flags": s.flags, "fields": fields})
+        })
         .collect();
     Ok(json!({
         "id": id_text(object_id(o)),
@@ -435,7 +432,20 @@ fn set(args: &Value) -> Result<Value, String> {
     let (path, mut data) = open_disk(args)?;
     let meta = metadata(args, data.kind);
     let id = parse_id(string(args, "object")?)?;
-    let field = parse_id(string(args, "field")?)?;
+    // The field by its name in the game's tables (`Cool`, `DataA`), for
+    // this object, or by its id.
+    let base = find(&data, id).map(|(custom, i)| {
+        if custom {
+            data.customs[i].base
+        } else {
+            data.originals[i].base
+        }
+    });
+    let field_arg = string(args, "field")?;
+    let field = match base.and_then(|b| meta.keys(data.kind, b).field(field_arg)) {
+        Some(field) => field,
+        None => parse_id(field_arg)?,
+    };
     let info = meta.get(field);
     if !meta.is_empty() && info.is_none() {
         return Err(format!(
@@ -494,10 +504,7 @@ fn set(args: &Value) -> Result<Value, String> {
     };
     match value {
         Some(value) => {
-            let set = object
-                .sets
-                .iter_mut()
-                .find(|s| s.mods.iter().any(&at));
+            let set = object.sets.iter_mut().find(|s| s.mods.iter().any(&at));
             match set {
                 Some(s) => {
                     let m = s.mods.iter_mut().find(|m| at(m)).expect("just found");

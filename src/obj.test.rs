@@ -16,10 +16,13 @@ fn run(name: &str, args: Value) -> Result<Value, String> {
 fn game(dir: &std::path::Path) -> String {
     let units = dir.join("game").join("Units");
     std::fs::create_dir_all(&units).unwrap();
+    // As the game's: `field` names the field in the data tables,
+    // `displayName` the editor's string.
     let rows: &[&[&str]] = &[
         &[
             "ID",
             "field",
+            "displayName",
             "type",
             "minVal",
             "maxVal",
@@ -27,11 +30,24 @@ fn game(dir: &std::path::Path) -> String {
             "data",
             "useSpecific",
         ],
-        &["anam", "Name", "string", "", "", "0", "0", ""],
-        &["acdn", "Cooldown", "unreal", "0", "300", "4", "0", ""],
-        &["Hbz1", "Waves", "int", "1", "99999", "4", "1", "AHbz"],
-        &["Hbz2", "Damage", "unreal", "0", "99999", "4", "2", "AHbz"],
+        &["anam", "Name", "WE_NAME", "string", "", "", "0", "0", ""],
+        &[
+            "acdn", "Cool", "WE_COOL", "unreal", "0", "300", "4", "0", "",
+        ],
+        &[
+            "Hbz1", "Data", "WE_HBZ1", "int", "1", "99999", "4", "1", "AHbz",
+        ],
+        &[
+            "Hbz2", "Data", "WE_HBZ2", "unreal", "0", "99999", "4", "2", "AHbz",
+        ],
     ];
+    let ui = dir.join("game").join("UI");
+    std::fs::create_dir_all(&ui).unwrap();
+    std::fs::write(
+        ui.join("WorldEditStrings.txt"),
+        "[WorldEditStrings]\nWE_NAME=Name\nWE_COOL=Cooldown\nWE_HBZ1=Waves\nWE_HBZ2=Damage\n",
+    )
+    .unwrap();
     let mut slk = String::from("ID;PWXL;N;E\n");
     for (y, row) in rows.iter().enumerate() {
         for (x, cell) in row.iter().enumerate() {
@@ -105,7 +121,7 @@ fn list_get_text() {
     .unwrap();
     assert_eq!(
         a["sets"][0]["fields"][1],
-        json!({"key": "Hbz2[1].B", "field": "Hbz2", "name": "Damage", "type": "unreal", "level": 1, "column": 2, "stored": "unreal", "value": 25.0})
+        json!({"key": "DataB[1]", "field": "Hbz2", "name": "Damage", "type": "unreal", "level": 1, "column": 2, "stored": "unreal", "value": 25.0})
     );
     assert!(
         run("obj_get", json!({"path": path, "object": "A999"}))
@@ -118,7 +134,7 @@ fn list_get_text() {
         text["text"]
             .as_str()
             .unwrap()
-            .contains("Hbz2[1].B=25.0 // Damage: unreal"),
+            .contains("DataB[1]=25.0 // Damage: unreal"),
         "{text}"
     );
     let page = run("obj_text", json!({"path": path, "offset": 1, "limit": 2})).unwrap();
@@ -142,7 +158,7 @@ fn checks_need_the_game() {
     let c = run("obj_check", json!({"path": path, "game": [game]})).unwrap();
     assert_eq!(c["total"], 1);
     assert_eq!(c["problems"][0]["object"], "A000");
-    assert_eq!(c["problems"][0]["key"], "Hbz1[1].A");
+    assert_eq!(c["problems"][0]["key"], "DataA[1]");
     assert_eq!(c["problems"][0]["rule"], "object-value-range");
 }
 
@@ -161,7 +177,8 @@ fn set_new_delete() {
         (r["before"].clone(), r["after"].clone()),
         (json!(null), json!(6.0))
     );
-    let r = run("obj_set", json!({"path": path, "game": g, "object": "A000", "field": "Hbz2", "level": 1, "value": "30.5"})).unwrap();
+    // By its name in the tables, as obj_get keys it.
+    let r = run("obj_set", json!({"path": path, "game": g, "object": "A000", "field": "DataB", "level": 1, "value": "30.5"})).unwrap();
     assert_eq!(
         (r["column"].clone(), r["before"].clone(), r["after"].clone()),
         (json!(2), json!(25.0), json!(30.5))
@@ -173,7 +190,7 @@ fn set_new_delete() {
     .unwrap()["sets"][0]["fields"]
         .clone();
     assert_eq!(fields[2]["stored"], "unreal");
-    assert_eq!(fields[2]["key"], "acdn[2]");
+    assert_eq!(fields[2]["key"], "Cool[2]");
     // Mistakes are said, and nothing is written.
     assert!(
         run(

@@ -83,10 +83,10 @@ its `level` and data `column` (`Data A` is 1).
 | tool         | does |
 |--------------|------|
 | `obj_list`   | the objects: id, base, table (`original` / `custom`), name (when the file sets it), how many fields; filter by text or table, page |
-| `obj_get`    | one object's fields: key (`Hbz1[3].A`), id, level, column, the type stored and the value; with `game` the field's name and type |
+| `obj_get`    | one object's fields: key as the text writes it (`DataA[3]` with `game`, else `Hbz1[3].A`), id, level, column, the type stored and the value; with `game` the field's name and type |
 | `obj_text`   | the file as the editor's text (BNI), with names and types as comments, paged by lines |
 | `obj_check`  | the problems the game's metadata shows (wrong types, values past World Editor's limits, unknown fields, levels and columns, fields of other objects), each with its object and key; needs `game` |
-| `obj_set`    | writes one field, or removes it (`null`); a number takes the field's type (integer, real, unreal) from the metadata |
+| `obj_set`    | writes one field (by its key, `Cool`, `DataA`, or its id), or removes it (`null`); a number takes the field's type (integer, real, unreal) from the metadata |
 | `obj_new`    | adds a custom object: its id and the standard object it starts from |
 | `obj_delete` | removes an object |
 
