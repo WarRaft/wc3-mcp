@@ -326,6 +326,16 @@ A project's settings, its `wc3.bni` (see the wc3-rs README, "Projects").
 | `project_info`  | the settings of the project a file or folder is in: game folders and roots (each a folder, a map or missing), sources, exclusions, builds, dialect, lint, the settings' problems, the text; and where the editor's files (`UI\TriggerData.txt` ...) and their patches come from |
 | `project_write` | writes a `wc3.bni` (made if missing) after reading it as the editor does: errors with their lines and nothing written, warnings with what was written |
 
+### Code
+
+The project's code checked as the editor checks it: the wc3-rs server's
+project model, loaded in process for the project, so what comes back is
+what VS Code shows.
+
+| tool         | does |
+|--------------|------|
+| `code_check` | every problem of a project's code (JASS, Zinc, Lua, AngelScript): parse errors, lint with the project's `[lint]`, and each JASS name checked against the whole project and the game's scripts it runs with (`unknown-name`, `argument-count`), so a problem between files shows; one file's only, errors only, a limit |
+
 ### Object collections
 
 `.w3o`, World Editor's Export All Object Data, with `w3o-rs`: every kind
@@ -354,16 +364,16 @@ at a time; changes are made to the file as to any text.
 
 ## Planned: JASS
 
-Not built yet. These are the next tools, and what the modules underneath
-are shaped for (jass-rs, the wc3-rs server):
+Partly built. These are the tools, and what the modules underneath are
+shaped for (jass-rs, the wc3-rs server):
 
-1. **Check a script**: syntax and semantics, as diagnostics. Semantics
-   first means names and order: an unknown function, variable or type, a
-   call with the wrong number of arguments; checking types (arguments,
-   `set`, `return`, conditions, the `handle` hierarchy from `common.j`)
-   comes after.
+1. **Check a script**: syntax and semantics, as diagnostics. Names are
+   done (`code_check`: an unknown function, variable or type, a call with
+   the wrong number of arguments, across the project's files); checking
+   types (arguments, `set`, `return`, conditions, the `handle` hierarchy
+   from `common.j`) comes after.
 2. **Lint and bad patterns**, by the same rules and project settings
-   (`[lint]` in `wc3.bni`) the editor uses.
+   (`[lint]` in `wc3.bni`) the editor uses: done, in `code_check`.
 3. **List natives** (and `Blizzard.j`'s functions) from the project's
    `game=` folders, with the comments written above them, where a
    `common.j` (UjAPI's, say) has them.

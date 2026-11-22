@@ -4,6 +4,7 @@
 //! [`rpc`] for the protocol, [`slk`], [`mpq`], [`obj`] and [`wts`] for the
 //! tools.
 
+mod code;
 mod imp;
 mod mmp;
 mod wct;
