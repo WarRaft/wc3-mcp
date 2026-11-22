@@ -334,7 +334,7 @@ what VS Code shows.
 
 | tool         | does |
 |--------------|------|
-| `code_check` | every problem of a project's code (JASS, Zinc, Lua, AngelScript): parse errors, lint with the project's `[lint]`, and each JASS name checked against the whole project and the game's scripts it runs with (`unknown-name`, `argument-count`), so a problem between files shows; one file's only, errors only, a limit |
+| `code_check` | every problem of a project's code (JASS, Zinc, Lua, AngelScript): parse errors, lint with the project's `[lint]`, and each JASS name and type checked against the whole project and the game's scripts it runs with (`unknown-name`, `argument-count`, `type-mismatch`, `array-access`, `constant-assignment`), so a problem between files shows; one file's only, errors only, a limit |
 
 ### Object collections
 
@@ -367,11 +367,10 @@ at a time; changes are made to the file as to any text.
 Partly built. These are the tools, and what the modules underneath are
 shaped for (jass-rs, the wc3-rs server):
 
-1. **Check a script**: syntax and semantics, as diagnostics. Names are
-   done (`code_check`: an unknown function, variable or type, a call with
-   the wrong number of arguments, across the project's files); checking
-   types (arguments, `set`, `return`, conditions, the `handle` hierarchy
-   from `common.j`) comes after.
+1. **Check a script**: syntax and semantics, as diagnostics: done
+   (`code_check`: an unknown function, variable or type, a call with the
+   wrong number of arguments, a value of the wrong type with the `handle`
+   tree from `common.j`, across the project's files).
 2. **Lint and bad patterns**, by the same rules and project settings
    (`[lint]` in `wc3.bni`) the editor uses: done, in `code_check`.
 3. **List natives** (and `Blizzard.j`'s functions) from the project's

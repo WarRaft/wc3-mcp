@@ -18,7 +18,7 @@ pub fn tools() -> Value {
     json!([
         {
             "name": "code_check",
-            "description": "Every problem of a project's code, as the editor shows it: parse errors, lint (with the project's [lint] settings), and each JASS name checked against the whole project and the game's scripts it runs with (common.j, Blizzard.j, through game= and the map's roots): a function, variable or type declared nowhere, a call with the wrong number of arguments, also between files. JASS, Zinc, Lua, AngelScript. Names are checked only when the game's common.j is found (give the project game=). Lines and columns from 1.",
+            "description": "Every problem of a project's code, as the editor shows it: parse errors, lint (with the project's [lint] settings), and each JASS name and type checked against the whole project and the game's scripts it runs with (common.j, Blizzard.j, through game= and the map's roots): a function, variable or type declared nowhere, a call with the wrong number of arguments, a value of the wrong type (argument, set, return, condition, operator), an array without its index, a constant set; also between files. JASS, Zinc, Lua, AngelScript. Names are checked only when the game's common.j is found (give the project game=). Lines and columns from 1.",
             "inputSchema": {"type": "object", "properties": {
                 "path": {"type": "string", "description": "The project: its wc3.bni, its folder, or any file in it (the nearest wc3.bni above it)"},
                 "file": {"type": "string", "description": "Only this file's problems (the whole project is read all the same)"},
