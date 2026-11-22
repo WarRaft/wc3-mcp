@@ -29,6 +29,15 @@ pub fn tools() -> Value {
             }, "required": ["path"]},
         },
         {
+            "name": "jass_build",
+            "description": "Builds JASS files into one script the game reads (wc3-build): this toolchain's JASS (set, call, local, takes nothing returns nothing left out; locals anywhere; globals at the top level; any number of main and config) made the game's: main and config merged, globals into globals and sorted, functions sorted so none calls one below it (a cycle goes through TriggerEvaluate, as JassHelper's .evaluate), locals to the top. Give the files (in their order) or a folder (its .j files, sorted by name); the script is written to `out`, or given back. Errors with their file and line.",
+            "inputSchema": {"type": "object", "properties": {
+                "files": {"type": "array", "items": {"type": "string"}, "description": "JASS files, in the order their main and config parts run"},
+                "dir": {"type": "string", "description": "A folder: its .j files, sorted by name, in place of `files`"},
+                "out": {"type": "string", "description": "Where to write the script; given back when left out"},
+            }},
+        },
+        {
             "name": "jass_natives",
             "description": "What the game's scripts declare, as a project sees them (common.j, Blizzard.j, common.ai through its game= folders and map roots, the last found winning: UjAPI's common.j over the game's): natives, functions and globals, each with its declaration, the script and line it's in, and the comment written above it. Search by name (any part, any case); an exact name first. Use it to find the native for a job, or what one takes.",
             "inputSchema": {"type": "object", "properties": {
@@ -51,6 +60,7 @@ pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
     Some(match name {
         "code_check" => check(args),
         "jass_natives" => natives(args),
+        "jass_build" => build(args),
         _ => return None,
     })
 }
@@ -95,6 +105,45 @@ fn check(args: &Value) -> Result<Value, String> {
     let total = problems.len();
     problems.truncate(limit);
     Ok(json!({"project": root, "files": files, "total": total, "problems": problems}))
+}
+
+fn build(args: &Value) -> Result<Value, String> {
+    let mut paths: Vec<PathBuf> = match (args.get("files").and_then(Value::as_array), args.get("dir").and_then(Value::as_str)) {
+        (Some(files), None) => files.iter().filter_map(Value::as_str).map(PathBuf::from).collect(),
+        (None, Some(dir)) => {
+            let mut p: Vec<PathBuf> = std::fs::read_dir(dir)
+                .map_err(|e| format!("{dir}: {e}"))?
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| p.extension().is_some_and(|x| x.eq_ignore_ascii_case("j")))
+                .collect();
+            p.sort();
+            p
+        }
+        _ => return Err("give `files` or `dir`".into()),
+    };
+    paths.retain(|p| p.is_file());
+    if paths.is_empty() {
+        return Err("no JASS files".into());
+    }
+    let texts: Vec<(String, String)> = paths
+        .iter()
+        .map(|p| Ok((p.to_string_lossy().into_owned(), String::from_utf8_lossy(&std::fs::read(p).map_err(|e| format!("{}: {e}", p.display()))?).into_owned())))
+        .collect::<Result<_, String>>()?;
+    let sources: Vec<wc3_build::from_jass::Source> = texts.iter().map(|(name, text)| wc3_build::from_jass::Source { name, text }).collect();
+    match wc3_build::jass_of(&sources) {
+        Err(errors) => {
+            let errors: Vec<Value> = errors.iter().map(|e| json!({"file": e.origin.file, "line": e.origin.line, "message": e.message})).collect();
+            Ok(json!({"built": false, "errors": errors}))
+        }
+        Ok(script) => match args.get("out").and_then(Value::as_str) {
+            Some(out) => {
+                std::fs::write(out, &script).map_err(|e| format!("{out}: {e}"))?;
+                Ok(json!({"built": true, "files": paths.len(), "lines": script.lines().count(), "out": out}))
+            }
+            None => Ok(json!({"built": true, "files": paths.len(), "lines": script.lines().count(), "script": script})),
+        },
+    }
 }
 
 /// A declaration of the game's scripts.

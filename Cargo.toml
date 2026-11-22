@@ -5,6 +5,10 @@ edition = "2024"
 description = "An MCP server (stdio) for Warcraft III's files: SLK tables to read, query and edit, from disk or from inside an MPQ archive or a map"
 license = "CC0-1.0"
 
+[lib]
+name = "wc3_mcp"
+path = "src/lib.rs"
+
 [[bin]]
 name = "wc3-mcp"
 path = "src/main.rs"
@@ -37,5 +41,6 @@ flate2 = "1.1.11"
 # The editor's project model: game files, metadata, and (planned) the
 # workspace, symbol index and rename for JASS.
 wc3-server = { path = "../wc3-rs/server" }
+wc3-build = { path = "../wc3-build" }
 # Keys in insertion order: a row's columns stay in the table's order.
 serde_json = { version = "1.0.145", features = ["preserve_order"] }

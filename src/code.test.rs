@@ -89,3 +89,25 @@ fn natives_with_their_comments() {
     assert!(call("jass_natives", &json!({"path": dir})).unwrap().is_err());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn builds_jass() {
+    let dir = temp("build");
+    write(&dir.join("src/b.j"), "function main\n    Helper()\nendfunction\n");
+    write(&dir.join("src/a.j"), "function Helper\n    integer i = 1\nendfunction\nfunction main\n    Helper()\nendfunction\n");
+    let r = call("jass_build", &json!({"dir": dir.join("src")})).unwrap().unwrap();
+    assert_eq!(r["built"], true, "{r}");
+    assert_eq!(
+        r["script"],
+        "globals\nendglobals\n\nfunction Helper takes nothing returns nothing\n    local integer i = 1\nendfunction\n\nfunction main takes nothing returns nothing\n    call Helper()\n    call Helper()\nendfunction\n"
+    );
+    let out = dir.join("war3map.j");
+    let r = call("jass_build", &json!({"files": [dir.join("src/a.j")], "out": out})).unwrap().unwrap();
+    assert_eq!((r["built"].as_bool(), r["lines"].as_u64()), (Some(true), Some(10)));
+    assert!(std::fs::read_to_string(&out).unwrap().contains("call Helper()"));
+    write(&dir.join("bad/c.j"), "constant string S = N()\nfunction N returns string\n    return \"\"\nendfunction\n");
+    let r = call("jass_build", &json!({"dir": dir.join("bad")})).unwrap().unwrap();
+    assert_eq!(r["built"], false);
+    assert_eq!(r["errors"][0]["line"], 1);
+    let _ = std::fs::remove_dir_all(&dir);
+}
