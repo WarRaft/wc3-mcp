@@ -7,7 +7,7 @@
 //!   [`crate::w3e::tools`], [`crate::w3i::tools`],
 //!   [`crate::w3r::tools`], [`crate::w3s::tools`], [`crate::wpm::tools`], [`crate::imp::tools`],
 //!   [`crate::mmp::tools`], [`crate::wct::tools`], [`crate::shd::tools`],
-//!   [`crate::doo::tools`], [`crate::wtg::tools`], [`crate::w3o::tools`],
+//!   [`crate::doo::tools`], [`crate::wtg::tools`], [`crate::trg::tools`], [`crate::w3o::tools`],
 //!   [`crate::txt2::tools`]);
 //! - `tools/call` runs one: its answer is text (JSON for data), and a
 //!   failure is a result with `isError`, so the model reads why;
@@ -74,7 +74,15 @@ fn initialize(params: &Value) -> Value {
             war3mapUnits.doo): doo_list with filters, doo_get for the text of some, doo_set, doo_new, \
             doo_delete. GUI triggers (war3map.wtg; give game=[...] for UI\\TriggerData.txt): wtg_list, \
             wtg_get for a trigger's text, wtg_set, wtg_new, wtg_delete, wtg_text and wtg_write for the \
-            whole file. Object collections (.w3o): w3o_info, w3o_split into each kind's file, w3o_join. \
+            whole file. Trigger files of their own (.trg: one trigger each, a folder per category, \
+            the globals in _variables.trg; the source a build makes the map's script of): trg_extract takes \
+            a map's triggers out into a folder, trg_list shows a project's triggers and variables, trg_read \
+            a trigger as World Editor's phrases with each line's place and call (read before changing one), \
+            trg_check the problems, trg_jass what it's built into; trg_functions and trg_types look up \
+            World Editor's functions (phrase, parameters' types, defaults, a ready line), types and presets \
+            to write lines; trg_write writes a file after checking it, trg_rename renames a trigger and its \
+            references, trg_variable changes or deletes a variable safely (its uses renamed, what breaks \
+            listed first). Give game=[...] for the phrases and checks. Object collections (.w3o): w3o_info, w3o_split into each kind's file, w3o_join. \
             txt2, XGM's markup (.txt2 articles): txt2_syntax before writing it, txt2_check, txt2_outline for \
             the parts of a big article with their lines, txt2_get for one part's text, txt2_html for the page.",
     })
@@ -98,6 +106,7 @@ fn call(params: &Value) -> Value {
         .or_else(|| crate::shd::call(name, &args))
         .or_else(|| crate::doo::call(name, &args))
         .or_else(|| crate::wtg::call(name, &args))
+        .or_else(|| crate::trg::call(name, &args))
         .or_else(|| crate::w3o::call(name, &args))
         .or_else(|| crate::txt2::call(name, &args))
         .unwrap_or_else(|| crate::slk::call(name, &args));
@@ -138,6 +147,7 @@ fn tools() -> Value {
     all.extend(crate::shd::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::doo::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::wtg::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::trg::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::w3o::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::txt2::tools().as_array().cloned().unwrap_or_default());
     Value::Array(all)

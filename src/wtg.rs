@@ -102,7 +102,7 @@ fn read(path: &str, bytes: &[u8], data: &TriggerData) -> Result<Triggers, String
     }
 }
 
-fn open(args: &Value) -> Result<(Triggers, TriggerData), String> {
+pub(crate) fn open(args: &Value) -> Result<(Triggers, TriggerData), String> {
     let (path, archive) = file(args, "war3map.wtg")?;
     let data = data(args)?;
     let f = read(path, &crate::source::read_bytes(path, archive)?, &data)?;

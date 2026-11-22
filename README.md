@@ -274,6 +274,35 @@ the `war3map.wct` beside the file in step (a piece of code per trigger).
 | `wtg_delete` | removes triggers, and their pieces of `war3map.wct` |
 | `wtg_text`, `wtg_write` | the whole file as text, and back |
 
+### Trigger files
+
+Trigger files of their own (`.trg`), the source the
+[wc3-rs](../wc3-rs) editor keeps a map's triggers in: one trigger per
+file, a folder per category (`000_Init/001_Spawn.trg`, the order the
+game builds them in in the names), the globals in `_variables.trg`. A
+project is a folder of them (`dir`): its globals, the names the map's
+script gives its triggers (`gg_trg_...`, World Editor's: `_` for each
+byte a JASS name can't have, a `u` after a `_` at the end) and the
+references between them are the folder's. The tools read, check, build
+and change them with the editor's server (`wc3_server::triggers`), and
+show them to read: a trigger's lines as World Editor's phrases (with
+`game`, in the game's language), the editor's functions, types and
+presets to write lines with. A folder of 750 trigger files is checked in
+a second.
+
+| tool            | does |
+|-----------------|------|
+| `trg_extract`   | a map's triggers out into a folder (files there kept unless `replace`) |
+| `trg_list`      | a project's triggers (file, category, name, its `gg_trg_`, flags, counts, problems) and variables |
+| `trg_read`      | a trigger as the editor shows it: each line its phrase, its line in the file and its call; blocks indented; the problems |
+| `trg_check`     | the problems: text, functions against `TriggerData.txt`, undeclared or unseen variables, `$gg_trg_` references no trigger has or that mean two, two triggers named alike in the script |
+| `trg_jass`      | the JASS a file is built into |
+| `trg_functions` | functions by words (`query`, `kind`), or one in full: phrase, parameters' types and defaults, what it returns, hint, a ready line |
+| `trg_types`     | the types, or a type's presets |
+| `trg_write`     | writes a file after checking it, then its problems in the project |
+| `trg_rename`    | renames a trigger; the references to it follow (`$gg_trg_...`, custom script, `.j`, by tokens); refused when another would be named alike |
+| `trg_variable`  | changes or deletes a variable: its uses renamed with it; what would break listed, done only with `confirm` |
+
 ### Object collections
 
 `.w3o`, World Editor's Export All Object Data, with `w3o-rs`: every kind
@@ -362,7 +391,7 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `w3e.rs`: the terrain tools;
 - `w3i.rs`: the map info tools;
 - `imp.rs`, `mmp.rs`, `wct.rs`, `shd.rs`: imports, minimap icons, custom script, shadows;
-- `doo.rs`: doodads and units placed; `wtg.rs`: triggers; `w3o.rs`: object collections;
+- `doo.rs`: doodads and units placed; `wtg.rs`: triggers (`war3map.wtg`); `trg.rs`: trigger files (`.trg`); `w3o.rs`: object collections;
 - `txt2.rs`: txt2, XGM's markup;
 - `source.rs`: reading a file from disk or from inside an archive.
 

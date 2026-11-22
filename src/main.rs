@@ -10,6 +10,7 @@ mod wct;
 mod shd;
 mod doo;
 mod wtg;
+mod trg;
 mod w3o;
 mod mpq;
 mod txt2;

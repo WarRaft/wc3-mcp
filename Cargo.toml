@@ -29,6 +29,8 @@ wtg-rs = { path = "../wtg-rs" }
 w3o-rs = { path = "../w3o-rs" }
 txt2-rs = { path = "../txt2-rs" }
 parser-rs = { path = "../parser-rs" }
+# Names in the project's JASS: references to triggers and variables.
+jass-rs = { path = "../jass-rs" }
 # PNG pictures (zlib, CRC); storm-rs uses it already.
 flate2 = "1.1.11"
 # The editor's project model: game files, metadata, and (planned) the

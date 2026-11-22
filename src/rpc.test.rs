@@ -28,6 +28,7 @@ fn initialize_and_list() {
                 w3e_info w3e_points w3e_set w3i_text w3i_write w3r_list w3r_set w3r_new w3r_delete w3s_list w3s_set w3s_new w3s_delete wpm_info wpm_image wpm_cells wpm_set \
                 imp_list imp_text imp_write mmp_list mmp_text mmp_write wct_text wct_write shd_image \
                 doo_list doo_get doo_set doo_new doo_delete wtg_list wtg_get wtg_set wtg_new wtg_delete wtg_text wtg_write \
+                trg_extract trg_list trg_read trg_check trg_jass trg_functions trg_types trg_write trg_rename trg_variable \
                 w3o_info w3o_split w3o_join txt2_syntax txt2_check txt2_outline txt2_get txt2_html";
     assert_eq!(names, want.split_whitespace().collect::<Vec<_>>());
 }
