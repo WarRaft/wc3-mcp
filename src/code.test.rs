@@ -63,3 +63,29 @@ fn no_project() {
     assert!(e.contains("no wc3.bni"), "{e}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn natives_with_their_comments() {
+    let dir = temp("natives");
+    write(&dir.join("game/Scripts/common.j"), "type unit extends handle\n// Kills it at once\nnative KillUnit takes unit u returns nothing\nconstant native GetTriggerUnit takes nothing returns unit\n");
+    write(&dir.join("game/Scripts/Blizzard.j"), "globals\n    constant integer bj_MAX_PLAYERS = 12 // players\nendglobals\nfunction KillUnitLater takes unit u, real wait returns nothing\nendfunction\n");
+    write(&dir.join("ujapi/Scripts/common.j"), "type unit extends handle\n// UjAPI's\nnative KillUnit takes unit whichUnit returns nothing\n");
+    write(&dir.join("proj/wc3.bni"), &format!("[project]\ngame={}\n", dir.join("game").display()));
+    let n = |args: Value| call("jass_natives", &args).unwrap().unwrap();
+
+    let r = n(json!({"path": dir.join("proj"), "name": "killunit"}));
+    assert_eq!(r["total"], 2, "{r}");
+    assert_eq!(r["items"][0], json!({"name": "KillUnit", "kind": "native", "declaration": "native KillUnit takes unit u returns nothing", "script": "common.j", "line": 3, "comment": "Kills it at once"}));
+    assert_eq!(r["items"][1]["declaration"], "function KillUnitLater takes unit u, real wait returns nothing");
+    let r = n(json!({"path": dir.join("proj"), "kind": "global"}));
+    assert_eq!(r["items"], json!([{"name": "bj_MAX_PLAYERS", "kind": "global", "declaration": "constant integer bj_MAX_PLAYERS", "script": "Blizzard.j", "line": 2, "comment": "players"}]));
+    let r = n(json!({"path": dir.join("proj"), "comment": "at once"}));
+    assert_eq!(r["total"], 1);
+    let r = n(json!({"path": dir.join("proj"), "script": "common.j", "kind": "native", "limit": 1, "offset": 1}));
+    assert_eq!((r["total"].as_u64(), r["items"][0]["declaration"].as_str()), (Some(2), Some("constant native GetTriggerUnit takes nothing returns unit")));
+    // UjAPI's common.j over the game's.
+    let r = n(json!({"game": [dir.join("game"), dir.join("ujapi")], "name": "KillUnit", "kind": "native"}));
+    assert_eq!((r["items"][0]["declaration"].as_str(), r["items"][0]["comment"].as_str()), (Some("native KillUnit takes unit whichUnit returns nothing"), Some("UjAPI's")));
+    assert!(call("jass_natives", &json!({"path": dir})).unwrap().is_err());
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -335,6 +335,7 @@ what VS Code shows.
 | tool         | does |
 |--------------|------|
 | `code_check` | every problem of a project's code (JASS, Zinc, Lua, AngelScript): parse errors, lint with the project's `[lint]`, and each JASS name and type checked against the whole project and the game's scripts it runs with (`unknown-name`, `argument-count`, `type-mismatch`, `array-access`, `constant-assignment`), so a problem between files shows; one file's only, errors only, a limit |
+| `jass_natives` | what the game's scripts declare as a project sees them (`common.j`, `Blizzard.j`, `common.ai` through its `game=` and roots, the last found winning: UjAPI's `common.j` over the game's): natives, functions, globals, each with its declaration, script, line and the comment above it; by a part of the name (the exact name first) or of the comment, by kind or script |
 
 ### Object collections
 
@@ -375,7 +376,7 @@ shaped for (jass-rs, the wc3-rs server):
    (`[lint]` in `wc3.bni`) the editor uses: done, in `code_check`.
 3. **List natives** (and `Blizzard.j`'s functions) from the project's
    `game=` folders, with the comments written above them, where a
-   `common.j` (UjAPI's, say) has them.
+   `common.j` (UjAPI's, say) has them: done, `jass_natives`.
 4. **Refactor**: rename a symbol everywhere it's used, scopes and
    shadowing taken care of, so the model asks for a rename instead of
    working out the language's rules itself.
