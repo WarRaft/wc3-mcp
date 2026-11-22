@@ -63,6 +63,7 @@ pub fn tools() -> Value {
                 "archive": archive,
                 "game": crate::source::game_schema(),
                 "roots": crate::source::roots_schema(),
+                "project": crate::source::project_schema(),
             }},
         },
         {

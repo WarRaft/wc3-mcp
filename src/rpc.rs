@@ -46,7 +46,13 @@ fn initialize(params: &Value) -> Value {
         "protocolVersion": version,
         "capabilities": {"tools": {}},
         "serverInfo": {"name": "wc3-mcp", "version": env!("CARGO_PKG_VERSION")},
-        "instructions": "Warcraft III files. SLK tables (.slk: Units\\UnitBalance.slk, \
+        "instructions": "Warcraft III files. Projects (wc3.bni: a map's game folders, roots, code): \
+            the tools that need the game's files (names, UI\\TriggerData.txt, metadata) take `game` and `roots`, \
+            and without them the settings of the project of the file they work on (the nearest wc3.bni above it, \
+            or `project`); project_info shows a project's settings and where the editor's files come from, \
+            project_write changes them. A modified editor's additions (natives in the GUI) go in a folder root as \
+            UI\\TriggerData.patch.txt (and TriggerStrings.patch.txt ...), which change the game's file by meaning. \
+            SLK tables (.slk: Units\\UnitBalance.slk, \
             the *MetaData.slk ...): slk_info for the columns, slk_read to query rows, \
             slk_get / slk_set for one cell, slk_lint for problems; a table can be read \
             from inside an MPQ archive or a map (archive=...). MPQ archives and maps \
@@ -56,7 +62,7 @@ fn initialize(params: &Value) -> Value {
             (listfile) needs names from listfiles=[...] to find its files. Object data \
             (war3map.w3a abilities, .w3b, .w3d, .w3h, .w3q, .w3t items, .w3u units): \
             obj_list, obj_get, obj_text, obj_check, and to change them obj_set, obj_new, \
-            obj_delete; give game=[the game's folders] for field names, types and checks; \
+            obj_delete; the game's files (`game`, or the project's) give field names, types and checks; \
             TRIGSTR_<n> values show as their text from the map's war3map.wts. String tables \
             (war3map.wts): wts_list, wts_get, wts_resolve, wts_lint, and wts_set to change one. \
             Cameras (war3map.w3c): w3c_list, and w3c_set, w3c_new, w3c_delete; the layout \
@@ -72,7 +78,7 @@ fn initialize(params: &Value) -> Value {
             mmp_list, mmp_text, mmp_write. Custom script (war3map.wct): wct_text, wct_write. \
             Shadow map (war3map.shd): shd_image. Doodads and units placed (war3map.doo, \
             war3mapUnits.doo): doo_list with filters, doo_get for the text of some, doo_set, doo_new, \
-            doo_delete. GUI triggers (war3map.wtg; give game=[...] for UI\\TriggerData.txt): wtg_list, \
+            doo_delete. GUI triggers (war3map.wtg; UI\\TriggerData.txt from the game's files): wtg_list, \
             wtg_get for a trigger's text, wtg_set, wtg_new, wtg_delete, wtg_text and wtg_write for the \
             whole file. Trigger files of their own (.trg: one trigger each, a folder per category, \
             the globals in _variables.trg; the source a build makes the map's script of): trg_extract takes \
@@ -82,7 +88,7 @@ fn initialize(params: &Value) -> Value {
             World Editor's functions (phrase, parameters' types, defaults, a ready line), types and presets \
             to write lines; trg_write writes a file after checking it, trg_rename renames a trigger and its \
             references, trg_variable changes or deletes a variable safely (its uses renamed, what breaks \
-            listed first). Give game=[...] for the phrases and checks. Object collections (.w3o): w3o_info, w3o_split into each kind's file, w3o_join. \
+            listed first). Object collections (.w3o): w3o_info, w3o_split into each kind's file, w3o_join. \
             txt2, XGM's markup (.txt2 articles): txt2_syntax before writing it, txt2_check, txt2_outline for \
             the parts of a big article with their lines, txt2_get for one part's text, txt2_html for the page.",
     })
@@ -109,6 +115,7 @@ fn call(params: &Value) -> Value {
         .or_else(|| crate::trg::call(name, &args))
         .or_else(|| crate::w3o::call(name, &args))
         .or_else(|| crate::txt2::call(name, &args))
+        .or_else(|| crate::project::call(name, &args))
         .unwrap_or_else(|| crate::slk::call(name, &args));
     match answer {
         // A tool that answers with more than text (a picture): its content
@@ -150,6 +157,7 @@ fn tools() -> Value {
     all.extend(crate::trg::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::w3o::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::txt2::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::project::tools().as_array().cloned().unwrap_or_default());
     Value::Array(all)
 }
 

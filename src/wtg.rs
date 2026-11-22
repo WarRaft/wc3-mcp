@@ -29,14 +29,14 @@ pub fn tools() -> Value {
     let trigger = json!({"description": "A trigger: its name, or its index (its place, from 0)", "anyOf": [{"type": "integer"}, {"type": "string"}]});
     let triggers = json!({"type": "array", "items": trigger.clone(), "description": "Triggers: names or indexes"});
     let with = |extra: Value| {
-        let mut props = json!({"game": game_schema(), "roots": roots_schema()});
+        let mut props = json!({"game": game_schema(), "roots": roots_schema(), "project": crate::source::project_schema()});
         props.as_object_mut().expect("an object").extend(extra.as_object().expect("an object").clone());
         props
     };
     json!([
         {
             "name": "wtg_list",
-            "description": "A map's GUI triggers (war3map.wtg): categories, variables (name, type, array, initial value) and triggers (index, name, category, flags, how many events, conditions, actions). Filters: `category` (index), `name` (part of it). `offset`, `limit` (500) page through triggers. Needs the game's UI\\TriggerData.txt: `game` (and `roots`).",
+            "description": "A map's GUI triggers (war3map.wtg): categories, variables (name, type, array, initial value) and triggers (index, name, category, flags, how many events, conditions, actions). Filters: `category` (index), `name` (part of it). `offset`, `limit` (500) page through triggers. Needs the game's UI\\TriggerData.txt: `game` and `roots`, or the project's (the nearest wc3.bni above the map).",
             "inputSchema": {"type": "object", "properties": with(json!({
                 "path": path, "archive": archive_schema(),
                 "category": {"type": "integer"}, "name": {"type": "string"},
@@ -51,17 +51,17 @@ pub fn tools() -> Value {
         {
             "name": "wtg_set",
             "description": "Replaces a trigger of a war3map.wtg on disk with `text`: one [trigger] section, as wtg_get gives it. Every function is checked against UI\\TriggerData.txt (`game`, `roots`).",
-            "inputSchema": {"type": "object", "properties": with(json!({"path": disk, "trigger": trigger, "text": {"type": "string"}})), "required": ["path", "trigger", "text", "game"]},
+            "inputSchema": {"type": "object", "properties": with(json!({"path": disk, "trigger": trigger, "text": {"type": "string"}})), "required": ["path", "trigger", "text"]},
         },
         {
             "name": "wtg_new",
             "description": format!("Adds to a war3map.wtg on disk what `text` holds: [category], [variable] (name=, type=, array=, size=, initial=) and [trigger] sections, at the end. A trigger goes in a category by its index (wtg_list). The war3map.wct beside it gets an empty piece per new trigger. {SYNTAX}"),
-            "inputSchema": {"type": "object", "properties": with(json!({"path": disk, "text": {"type": "string"}})), "required": ["path", "text", "game"]},
+            "inputSchema": {"type": "object", "properties": with(json!({"path": disk, "text": {"type": "string"}})), "required": ["path", "text"]},
         },
         {
             "name": "wtg_delete",
             "description": "Removes triggers from a war3map.wtg on disk, and their code from the war3map.wct beside it. Triggers after them move up: indexes change.",
-            "inputSchema": {"type": "object", "properties": with(json!({"path": disk, "trigger": triggers})), "required": ["path", "trigger", "game"]},
+            "inputSchema": {"type": "object", "properties": with(json!({"path": disk, "trigger": triggers})), "required": ["path", "trigger"]},
         },
         {
             "name": "wtg_text",
@@ -71,7 +71,7 @@ pub fn tools() -> Value {
         {
             "name": "wtg_write",
             "description": "Writes a war3map.wtg on disk from its whole text form (as wtg_text gives it), after checking it and every function against UI\\TriggerData.txt: every error, with its line, and nothing written. Keep war3map.wct's pieces in step with the triggers.",
-            "inputSchema": {"type": "object", "properties": with(json!({"path": disk, "text": {"type": "string"}})), "required": ["path", "text", "game"]},
+            "inputSchema": {"type": "object", "properties": with(json!({"path": disk, "text": {"type": "string"}})), "required": ["path", "text"]},
         },
     ])
 }
@@ -90,7 +90,10 @@ pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
 fn data(args: &Value) -> Result<TriggerData, String> {
     let data = crate::source::names(args).triggers;
     if data.is_empty() {
-        return Err("no UI\\TriggerData.txt in `game` and `roots`: it says how many parameters each function takes, which the file doesn't".into());
+        return Err(format!(
+            "no UI\\TriggerData.txt in {}: it says how many parameters each function takes, which the file doesn't",
+            crate::source::layers_named(args)
+        ));
     }
     Ok(data)
 }
@@ -104,8 +107,10 @@ fn read(path: &str, bytes: &[u8], data: &TriggerData) -> Result<Triggers, String
 
 pub(crate) fn open(args: &Value) -> Result<(Triggers, TriggerData), String> {
     let (path, archive) = file(args, "war3map.wtg")?;
+    // The file first: a file that isn't there is the first thing to say.
+    let bytes = crate::source::read_bytes(path, archive)?;
     let data = data(args)?;
-    let f = read(path, &crate::source::read_bytes(path, archive)?, &data)?;
+    let f = read(path, &bytes, &data)?;
     Ok((f, data))
 }
 

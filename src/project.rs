@@ -1,0 +1,131 @@
+//! The project tools: a project's settings, its `wc3.bni` (what the
+//! editor reads: `[project] game=`, `[map] root=`, `[code] sources=`,
+//! `[build]`, `[lint]`; see the wc3-rs README, "Projects"). The other
+//! tools take their `game` and `roots` from the project of the file they
+//! work on when not given (`source::lookup`), so these are for seeing
+//! and changing those settings.
+
+use std::path::{Path, PathBuf};
+
+use serde_json::{Value, json};
+
+use crate::source::arg_str;
+use wc3_server::project::{LintSetting, MANIFEST};
+
+/// Every tool, for `tools/list`.
+pub fn tools() -> Value {
+    json!([
+        {
+            "name": "project_info",
+            "description": "A project's settings (wc3.bni, the nearest one in the folder of `path` or above): its game folders and map roots (each: does it exist, a folder or a map), code sources and exclusions, builds, JASS dialect, lint settings, the problems of the settings, the manifest's text; and the editor's files the layers give (UI\\TriggerData.txt ...: from where, and the patches beside them, X.patch.txt changing X by meaning). Change the settings with project_write.",
+            "inputSchema": {"type": "object", "properties": {
+                "path": {"type": "string", "description": "A project's wc3.bni, or any file or folder in it (a map, a trigger folder)"},
+            }, "required": ["path"]},
+        },
+        {
+            "name": "project_write",
+            "description": "Writes a project's wc3.bni from its whole text (made if missing), after reading it as the editor does: every error, with its line, and nothing written; warnings come back with what was written. Sections: [project] game= (game folders, lowest first), [map] root= (folders or maps whose top is the map's, lowest first; patches to the editor's files go in a folder root: UI\\TriggerData.patch.txt), [code] sources=, exclude= (masks), [build] name=, [jass] dialect=, [lint] <rule>=off|warning|error. Paths are against the project's folder.",
+            "inputSchema": {"type": "object", "properties": {
+                "path": {"type": "string", "description": "The wc3.bni, or the project's folder"},
+                "text": {"type": "string", "description": "The whole text"},
+            }, "required": ["path", "text"]},
+        },
+    ])
+}
+
+/// Runs the tool `name`, if it's one of these.
+pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
+    Some(match name {
+        "project_info" => info(args),
+        "project_write" => write(args),
+        _ => return None,
+    })
+}
+
+fn issues(issues: &[wc3_server::project::Issue]) -> Value {
+    issues.iter().map(|i| json!({"line": i.line, "level": i.level.as_str(), "message": i.message})).collect()
+}
+
+fn info(args: &Value) -> Result<Value, String> {
+    let at = PathBuf::from(arg_str(args, "path")?);
+    let at = std::path::absolute(&at).unwrap_or(at);
+    let (project, manifest, problems) =
+        crate::source::load_project(&at).ok_or(format!("{}: no {MANIFEST} in it or above it (project_write makes one)", at.display()))?;
+    let text = std::fs::read_to_string(&manifest).unwrap_or_default();
+    let place = |p: &Path| {
+        let kind = if p.is_dir() { "folder" } else if p.is_file() { "map" } else { "missing" };
+        json!({"path": p, "kind": kind})
+    };
+    let lint: serde_json::Map<String, Value> = project
+        .lint
+        .iter()
+        .chain(&project.lint_groups)
+        .map(|(k, v)| {
+            let v = match v {
+                LintSetting::Off => "off",
+                LintSetting::On(level) => level.as_str(),
+            };
+            (k.clone(), json!(v))
+        })
+        .collect();
+    // The editor's files, as the project's map reads them.
+    let lookup = wc3_server::game::Lookup::of(&project);
+    let (game, open_errors) = lookup.open();
+    let source = |s: wc3_server::game::Source| match s {
+        wc3_server::game::Source::Archive(p) | wc3_server::game::Source::File(p) => p,
+    };
+    let editor: Vec<Value> = wc3_server::names::PATCHED
+        .iter()
+        .map(|name| {
+            let patch = wc3_server::game::patch_name(name);
+            json!({
+                "file": name,
+                "from": game.read(name).map(|(_, s)| source(s)),
+                "patch": patch,
+                "patch_from": game.read(&patch).map(|(_, s)| source(s)),
+            })
+        })
+        .collect();
+    Ok(json!({
+        "manifest": manifest,
+        "root": project.root,
+        "game": project.game.iter().map(|p| place(p)).collect::<Vec<_>>(),
+        "roots": project.roots.iter().map(|p| place(p)).collect::<Vec<_>>(),
+        "sources": project.sources.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
+        "exclude": project.exclude.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
+        "builds": project.builds,
+        "jass_dialect": project.jass_dialect.map(|d| format!("{d:?}").to_lowercase()),
+        "lint": lint,
+        "problems": issues(&problems),
+        "layers_not_opened": open_errors,
+        "editor_files": editor,
+        "text": text,
+    }))
+}
+
+fn write(args: &Value) -> Result<Value, String> {
+    let path = PathBuf::from(arg_str(args, "path")?);
+    let text = arg_str(args, "text")?;
+    let manifest = if path.is_dir() { path.join(MANIFEST) } else { path };
+    if !wc3_server::project::is_manifest(&manifest) {
+        return Err(format!("{}: a project's settings are its {MANIFEST}", manifest.display()));
+    }
+    let root = manifest.parent().ok_or(format!("{}: no folder", manifest.display()))?;
+    if !root.is_dir() {
+        return Err(format!("{}: no such folder", root.display()));
+    }
+    let doc = bni_rs::parse(text);
+    let (_, problems) = wc3_server::project::load(root, text);
+    let mut errors: Vec<(usize, String)> = doc.errors.iter().map(|e| (e.line, e.message.clone())).collect();
+    errors.extend(problems.iter().filter(|i| i.level == parser_rs::Level::Error).map(|i| (i.line, i.message.clone())));
+    if !errors.is_empty() {
+        errors.sort();
+        return Err(crate::source::text_errors(errors.iter().map(|(l, m)| (*l, m.as_str()))));
+    }
+    std::fs::write(&manifest, text).map_err(|e| format!("{}: {e}", manifest.display()))?;
+    Ok(json!({"written": manifest, "problems": issues(&problems)}))
+}
+
+#[cfg(test)]
+#[path = "project.test.rs"]
+mod tests;

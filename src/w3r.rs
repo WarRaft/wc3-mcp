@@ -37,7 +37,7 @@ pub fn tools() -> Value {
         {
             "name": "w3r_list",
             "description": "A map's regions (war3map.w3r): name, the script's variable (gg_rct_...), index, the rectangle (left, bottom, right, top in world coordinates), weather, ambient sound, color. With `game`, the weather's name from the game's files.",
-            "inputSchema": {"type": "object", "properties": {"path": path, "archive": archive, "game": crate::source::game_schema(), "roots": crate::source::roots_schema()}},
+            "inputSchema": {"type": "object", "properties": {"path": path, "archive": archive, "game": crate::source::game_schema(), "roots": crate::source::roots_schema(), "project": crate::source::project_schema()}},
         },
         {
             "name": "w3r_set",

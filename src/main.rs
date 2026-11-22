@@ -15,6 +15,7 @@ mod w3o;
 mod mpq;
 mod txt2;
 mod obj;
+mod project;
 mod png;
 mod rpc;
 mod slk;

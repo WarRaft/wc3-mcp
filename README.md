@@ -36,6 +36,18 @@ keeps holding text, and `"quoted"` input is always text.
 Answers are compact JSON, a tool's failure a result with `isError` and the
 reason, so the model reads what went wrong.
 
+**The game's files: `game`, `roots`, or the project's.** Tools that show
+the game's names or check against its data (`UI\TriggerData.txt`, the
+metadata tables) look files up through layers: `game` (the game's
+folders, lowest first) and `roots` (the map's roots over them). Each one
+a call leaves out comes from the project of the file the tool works on
+(the nearest `wc3.bni` above `archive`, `path`, `file` or `dir`, or the
+one `project` names), the way the editor reads that file: a map the
+project doesn't make its map is read alone over the game
+(`wc3_server::game::Lookup::for_file`). Given ones win, so `"roots": []`
+reads without the project's roots. A message that a file is missing
+says where it was looked for.
+
 ```json
 {"name": "slk_read", "arguments": {
   "path": "Units/UnitBalance.slk",
@@ -259,8 +271,10 @@ file. A thing's text is the editor's: a `[doodad]` or `[unit]` section.
 
 `war3map.wtg`, the GUI triggers, with `wtg-rs`. How many parameters each
 function takes is in World Editor's `UI\TriggerData.txt`, not the file:
-every tool takes `game` (and `roots`, where a modded editor's file
-wins). A trigger's text is the editor's: a `[trigger]` section, its
+every tool reads it through `game` and `roots`, or the project's (see
+above). A map made with a modified editor (natives added to the GUI)
+needs its additions: a folder root with `UI\TriggerData.patch.txt` and
+`UI\TriggerStrings.patch.txt`, which change the game's files by meaning. A trigger's text is the editor's: a `[trigger]` section, its
 events, conditions and actions as lines of calls
 (`action=TriggerSleepAction("2.00")`). Adding or removing triggers keeps
 the `war3map.wct` beside the file in step (a piece of code per trigger).
@@ -292,7 +306,7 @@ a second.
 
 | tool            | does |
 |-----------------|------|
-| `trg_extract`   | a map's triggers out into a folder (files there kept unless `replace`) |
+| `trg_extract`   | a map's triggers out into a folder (files there kept unless `replace`); the folders and how many files, their names up to 100 |
 | `trg_list`      | a project's triggers (file, category, name, its `gg_trg_`, flags, counts, problems) and variables |
 | `trg_read`      | a trigger as the editor shows it: each line its phrase, its line in the file and its call; blocks indented; the problems |
 | `trg_check`     | the problems: text, functions against `TriggerData.txt`, undeclared or unseen variables, `$gg_trg_` references no trigger has or that mean two, two triggers named alike in the script |
@@ -302,6 +316,15 @@ a second.
 | `trg_write`     | writes a file after checking it, then its problems in the project |
 | `trg_rename`    | renames a trigger; the references to it follow (`$gg_trg_...`, custom script, `.j`, by tokens); refused when another would be named alike |
 | `trg_variable`  | changes or deletes a variable: its uses renamed with it; what would break listed, done only with `confirm` |
+
+### Projects
+
+A project's settings, its `wc3.bni` (see the wc3-rs README, "Projects").
+
+| tool            | does |
+|-----------------|------|
+| `project_info`  | the settings of the project a file or folder is in: game folders and roots (each a folder, a map or missing), sources, exclusions, builds, dialect, lint, the settings' problems, the text; and where the editor's files (`UI\TriggerData.txt` ...) and their patches come from |
+| `project_write` | writes a `wc3.bni` (made if missing) after reading it as the editor does: errors with their lines and nothing written, warnings with what was written |
 
 ### Object collections
 
@@ -393,7 +416,8 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `imp.rs`, `mmp.rs`, `wct.rs`, `shd.rs`: imports, minimap icons, custom script, shadows;
 - `doo.rs`: doodads and units placed; `wtg.rs`: triggers (`war3map.wtg`); `trg.rs`: trigger files (`.trg`); `w3o.rs`: object collections;
 - `txt2.rs`: txt2, XGM's markup;
-- `source.rs`: reading a file from disk or from inside an archive.
+- `project.rs`: a project's settings (`wc3.bni`);
+- `source.rs`: reading a file from disk or from inside an archive; the layers a call reads the game's files through (given, or its project's).
 
 The game's metadata comes from the editor's server, used as a library
 (`wc3_server::objects::metadata`), so both read the game the same way.

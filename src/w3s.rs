@@ -36,7 +36,7 @@ pub fn tools() -> Value {
         {
             "name": "w3s_list",
             "description": "A map's sounds (war3map.w3s): index, variable, file, EAX setting, flags (with their names), volume, pitch, channel (with its name), fades, distances, cone. \"default\" is World Editor's \"use default\". With `game`, the names are the game's (its language), and the EAX setting's name too.",
-            "inputSchema": {"type": "object", "properties": {"path": path, "archive": archive, "game": crate::source::game_schema(), "roots": crate::source::roots_schema()}},
+            "inputSchema": {"type": "object", "properties": {"path": path, "archive": archive, "game": crate::source::game_schema(), "roots": crate::source::roots_schema(), "project": crate::source::project_schema()}},
         },
         {
             "name": "w3s_set",

@@ -29,6 +29,7 @@ wtg-rs = { path = "../wtg-rs" }
 w3o-rs = { path = "../w3o-rs" }
 txt2-rs = { path = "../txt2-rs" }
 parser-rs = { path = "../parser-rs" }
+bni-rs = { path = "../bni-rs" }
 # Names in the project's JASS: references to triggers and variables.
 jass-rs = { path = "../jass-rs" }
 # PNG pictures (zlib, CRC); storm-rs uses it already.

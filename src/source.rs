@@ -2,7 +2,7 @@
 //! MPQ archive or a map (`.mpq`, `.w3x`, `.w3m`), read with `storm-rs`.
 //! Text is read as UTF-8, invalid bytes replaced.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// The text of `path`, or of the file named `path` inside `archive`.
 pub fn read(path: &str, archive: Option<&str>) -> Result<String, String> {
@@ -34,31 +34,89 @@ pub fn write(path: &str, data: impl AsRef<[u8]>) -> Result<(), String> {
     std::fs::write(path, data).map_err(|e| format!("{path}: {e}"))
 }
 
-/// Where the game's files are looked up, from `args.game` (the game's
+/// Where the game's files are looked up: `args.game` (the game's
 /// folders, lowest first, as a project's `game=`) and `args.roots` (the
-/// map's roots, folders or maps, as `[map] root=`): the same layers the
-/// editor reads, the last that has a file wins.
+/// map's roots, folders or maps, as `[map] root=`), each when given;
+/// what isn't given comes from the call's project ([`project`]), the way
+/// the editor reads that file (`Lookup::for_file`: a map the project
+/// doesn't make its map is read alone over the game). The last layer
+/// that has a file wins.
 pub fn lookup(args: &serde_json::Value) -> wc3_server::game::Lookup {
-    let paths = |key: &str| -> Vec<std::path::PathBuf> {
+    let given = |key: &str| -> Option<Vec<PathBuf>> {
         args.get(key)
             .and_then(serde_json::Value::as_array)
-            .map(|l| l.iter().filter_map(serde_json::Value::as_str).map(std::path::PathBuf::from).collect())
-            .unwrap_or_default()
+            .map(|l| l.iter().filter_map(serde_json::Value::as_str).map(PathBuf::from).collect())
+    };
+    let (game, roots) = (given("game"), given("roots"));
+    let from_project = match (&game, &roots) {
+        (Some(_), Some(_)) => wc3_server::game::Lookup::default(),
+        _ => project(args)
+            .map(|(p, at)| wc3_server::game::Lookup::for_file(&p, &at))
+            .unwrap_or_default(),
     };
     wc3_server::game::Lookup {
-        game: paths("game"),
-        roots: paths("roots"),
+        game: game.unwrap_or(from_project.game),
+        roots: roots.unwrap_or(from_project.roots),
+    }
+}
+
+/// The project a call is about, and the file it's about in it: the
+/// project of `args.project` (its `wc3.bni`, or a file or folder in it),
+/// else of the file the tool works on (`archive`, a file inside it;
+/// `path`, `file`, `dir`), found as the editor finds it: the nearest
+/// `wc3.bni` in its folder or above. `None` outside every project.
+pub fn project(args: &serde_json::Value) -> Option<(wc3_server::project::Project, PathBuf)> {
+    let arg = |key: &str| args.get(key).and_then(serde_json::Value::as_str).filter(|s| !s.is_empty());
+    let at = match (arg("project"), arg("archive")) {
+        (Some(p), _) => PathBuf::from(p),
+        // A file inside the map, so the map is what it's in.
+        (None, Some(a)) => PathBuf::from(a).join(arg("path").unwrap_or("war3map.w3i")),
+        (None, None) => PathBuf::from(arg("path").or(arg("file")).or(arg("dir"))?),
+    };
+    let at = std::path::absolute(&at).unwrap_or(at);
+    let (project, _, _) = load_project(&at)?;
+    Some((project, at))
+}
+
+/// The project `at` (its `wc3.bni`, or a file or folder in it) belongs
+/// to: its settings, the manifest's path and the problems of its
+/// settings. `None` with no `wc3.bni` there or above, or one that can't
+/// be read.
+pub fn load_project(at: &Path) -> Option<(wc3_server::project::Project, PathBuf, Vec<wc3_server::project::Issue>)> {
+    let manifest = if wc3_server::project::is_manifest(at) && at.is_file() {
+        at.to_path_buf()
+    } else {
+        at.ancestors().map(|d| d.join(wc3_server::project::MANIFEST)).find(|m| m.is_file())?
+    };
+    let src = std::fs::read_to_string(&manifest).ok()?;
+    let (project, issues) = wc3_server::project::load(manifest.parent()?, &src);
+    Some((project, manifest, issues))
+}
+
+/// Where the game's files were looked for, for a message saying one
+/// isn't there: the folders given, or the project's.
+pub fn layers_named(args: &serde_json::Value) -> String {
+    let given = |key: &str| args.get(key).is_some_and(serde_json::Value::is_array);
+    match (given("game"), given("roots"), project(args)) {
+        (true, true, _) => "`game` and `roots`".into(),
+        (_, _, Some((p, _))) => format!("the game folders and roots of {} (and `game`, `roots` where given)", p.manifest().display()),
+        _ => "`game` and `roots` (none given, and no wc3.bni of a project above the file to take them from: give them, or `project`)".into(),
     }
 }
 
 /// The schema of `roots`, for the tools that take `game`.
 pub fn roots_schema() -> serde_json::Value {
-    serde_json::json!({"type": "array", "items": {"type": "string"}, "description": "The map's roots over the game's folders, lowest first (as a project's [map] root=): folders or maps whose files replace the game's"})
+    serde_json::json!({"type": "array", "items": {"type": "string"}, "description": "The map's roots over the game's folders, lowest first (as a project's [map] root=): folders or maps whose files replace the game's. Default: the project's"})
 }
 
 /// The schema of `game`, for the tools that show the game's names.
 pub fn game_schema() -> serde_json::Value {
-    serde_json::json!({"type": "array", "items": {"type": "string"}, "description": "The game's folders, lowest first (as a project's game=): names come from their files (UI\\WorldEditStrings.txt ...), in the game's language"})
+    serde_json::json!({"type": "array", "items": {"type": "string"}, "description": "The game's folders, lowest first (as a project's game=): names come from their files (UI\\WorldEditStrings.txt ...), in the game's language. Default: the project's"})
+}
+
+/// The schema of `project`, beside `game` and `roots`.
+pub fn project_schema() -> serde_json::Value {
+    serde_json::json!({"type": "string", "description": "A project's wc3.bni, or a file or folder in it: `game` and `roots` not given come from its settings. Default: the project of the file worked on (the nearest wc3.bni above it)"})
 }
 
 /// The names the game's files give, through `args.game` and

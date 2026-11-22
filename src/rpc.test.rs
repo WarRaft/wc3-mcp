@@ -29,7 +29,7 @@ fn initialize_and_list() {
                 imp_list imp_text imp_write mmp_list mmp_text mmp_write wct_text wct_write shd_image \
                 doo_list doo_get doo_set doo_new doo_delete wtg_list wtg_get wtg_set wtg_new wtg_delete wtg_text wtg_write \
                 trg_extract trg_list trg_read trg_check trg_jass trg_functions trg_types trg_write trg_rename trg_variable \
-                w3o_info w3o_split w3o_join txt2_syntax txt2_check txt2_outline txt2_get txt2_html";
+                w3o_info w3o_split w3o_join txt2_syntax txt2_check txt2_outline txt2_get txt2_html project_info project_write";
     assert_eq!(names, want.split_whitespace().collect::<Vec<_>>());
 }
 

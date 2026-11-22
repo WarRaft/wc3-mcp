@@ -29,7 +29,7 @@ pub fn tools() -> Value {
     let game = json!({"type": "array", "items": {"type": "string"}, "description": "The game's folders, lowest first (as a project's game=): their War3*.mpq and files give the fields' names, types and checks"});
     let object = json!({"type": "string", "description": "The object's id: a custom one's (A000), a changed standard one's (AHbz)"});
     let strings = json!({"type": "string", "description": "The map's string table (war3map.wts) on disk, to show TRIGSTR_<n> values as their text; read from `archive` by itself"});
-    let source = json!({"path": path, "archive": archive, "game": game, "roots": crate::source::roots_schema(), "strings": strings});
+    let source = json!({"path": path, "archive": archive, "game": game, "roots": crate::source::roots_schema(), "project": crate::source::project_schema(), "strings": strings});
     let with = |extra: Value| {
         let mut props = source.as_object().expect("an object").clone();
         props.extend(extra.as_object().expect("an object").clone());
@@ -70,7 +70,7 @@ pub fn tools() -> Value {
         {
             "name": "obj_check",
             "description": "Checks an object data file against the game's metadata (`game` is needed): values of the wrong type, past World Editor's limits, unknown fields, levels or data columns that don't fit, fields of other objects. Each problem with its object, key, rule and message.",
-            "inputSchema": {"type": "object", "properties": source, "required": ["path", "game"]},
+            "inputSchema": {"type": "object", "properties": source, "required": ["path"]},
         },
         {
             "name": "obj_set",
@@ -81,6 +81,7 @@ pub fn tools() -> Value {
                     "path": disk,
                     "game": game,
                     "roots": crate::source::roots_schema(),
+                    "project": crate::source::project_schema(),
                     "object": object,
                     "field": {"type": "string", "description": "The field: its name in the game's tables as obj_get keys it (Cool, DataA, HP) or its id (acdn, Hbz1, uhpm)"},
                     "level": {"type": "integer", "minimum": 0},

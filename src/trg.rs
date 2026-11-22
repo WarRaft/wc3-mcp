@@ -32,19 +32,19 @@ pub fn tools() -> Value {
     let dir = json!({"type": "string", "description": "The folder of the project's trigger files (as trg_extract made it): its globals, and what refers to what, are the folder's. Left out: the nearest folder above the file holding _variables.trg, else the file's own"});
     let file = json!({"type": "string", "description": "A trigger file (.trg) on disk"});
     let with = |extra: Value| {
-        let mut props = json!({"game": game_schema(), "roots": roots_schema()});
+        let mut props = json!({"game": game_schema(), "roots": roots_schema(), "project": crate::source::project_schema()});
         props.as_object_mut().expect("an object").extend(extra.as_object().expect("an object").clone());
         props
     };
     json!([
         {
             "name": "trg_extract",
-            "description": "Takes a map's GUI triggers out of its war3map.wtg into a folder as trigger files: a folder per category (000_Init), a .trg per trigger (001_Spawn.trg, the order the game builds them in the names), the global variables in _variables.trg. Files already there are left alone unless `replace`. A trigger's name in the map's script (gg_trg_...) stays World Editor's, so the map's references stay true. Needs UI\\TriggerData.txt: `game`. Then trg_list, trg_read.",
+            "description": "Takes a map's GUI triggers out of its war3map.wtg into a folder as trigger files: a folder per category (000_Init), a .trg per trigger (001_Spawn.trg, the order the game builds them in the names), the global variables in _variables.trg. Files already there are left alone unless `replace`. Answers the folders and how many files (their names too, up to 100). A trigger's name in the map's script (gg_trg_...) stays World Editor's, so the map's references stay true. Needs UI\\TriggerData.txt: `game`, or the project's. Then trg_list, trg_read.",
             "inputSchema": {"type": "object", "properties": with(json!({
                 "path": path_schema("war3map.wtg", "The trigger file"), "archive": archive_schema(),
                 "dir": {"type": "string", "description": "The folder to put them in; made if missing"},
                 "replace": {"type": "boolean", "description": "Replace files already there (default: refuse, writing nothing)"},
-            })), "required": ["dir", "game"]},
+            })), "required": ["dir"]},
         },
         {
             "name": "trg_list",
@@ -58,7 +58,7 @@ pub fn tools() -> Value {
         },
         {
             "name": "trg_check",
-            "description": "The problems of a project's trigger files (or of one): text that doesn't read, a function UI\\TriggerData.txt doesn't have or with the wrong number of parameters (with `game`), a variable no file declares or not seen where it's used (a local outside its trigger's actions, another file's private one), a $gg_trg_ reference no trigger has or that may mean two, two triggers the map's script would name alike.",
+            "description": "The problems of a project's trigger files (or of one): text that doesn't read, a function UI\\TriggerData.txt doesn't have or with the wrong number of parameters (with the game's files: `game`, or the project's), a variable no file declares or not seen where it's used (a local outside its trigger's actions, another file's private one), a $gg_trg_ reference no trigger has or that may mean two, two triggers the map's script would name alike.",
             "inputSchema": {"type": "object", "properties": with(json!({"dir": {"type": "string", "description": "The folder of trigger files: all of them"}, "file": file}))},
         },
         {
@@ -73,7 +73,7 @@ pub fn tools() -> Value {
                 "query": {"type": "string"}, "name": {"type": "string"},
                 "kind": {"type": "string", "enum": ["event", "condition", "action", "call"]},
                 "limit": {"type": "integer", "minimum": 1, "description": "Matches at most (default 50)"},
-            })), "required": ["game"]},
+            }))},
         },
         {
             "name": "trg_types",
@@ -81,11 +81,11 @@ pub fn tools() -> Value {
             "inputSchema": {"type": "object", "properties": with(json!({
                 "type": {"type": "string"}, "query": {"type": "string"},
                 "limit": {"type": "integer", "minimum": 1, "description": "Presets at most (default 200)"},
-            })), "required": ["game"]},
+            }))},
         },
         {
             "name": "trg_write",
-            "description": format!("Writes a trigger file (made, with its folders, if missing) from its whole text, after reading it (and every function against UI\\TriggerData.txt with `game`): every error, with its line, and nothing written. Then the problems it has in its project (an undeclared variable ...). {SYNTAX}"),
+            "description": format!("Writes a trigger file (made, with its folders, if missing) from its whole text, after reading it (and every function against UI\\TriggerData.txt with the game's files): every error, with its line, and nothing written. Then the problems it has in its project (an undeclared variable ...). {SYNTAX}"),
             "inputSchema": {"type": "object", "properties": with(json!({"file": file, "dir": dir, "text": {"type": "string"}})), "required": ["file", "text"]},
         },
         {
@@ -320,7 +320,10 @@ fn extract(args: &Value) -> Result<Value, String> {
     Ok(json!({
         "dir": dir,
         "folders": made.folders,
-        "files": made.files.iter().map(|(p, _)| p).collect::<Vec<_>>(),
+        "file_count": made.files.len(),
+        // A big map's hundreds of names aren't worth their tokens: trg_list
+        // shows them.
+        "files": (made.files.len() <= 100).then(|| made.files.iter().map(|(p, _)| p).collect::<Vec<_>>()),
         "custom_text_triggers": custom,
         "note": if custom > 0 { "triggers of custom text (custom_text=1) have their code in the map's war3map.wct (wct_text), not in their files" } else { "" },
     }))
@@ -458,7 +461,7 @@ fn read(args: &Value) -> Result<String, String> {
         }
     }
     if v["data"] == json!(false) {
-        out += "(No UI\\TriggerData.txt in `game` and `roots`: lines show as their calls.)\n";
+        out += &format!("(No UI\\TriggerData.txt in {}: lines show as their calls.)\n", crate::source::layers_named(args));
     }
     Ok(out)
 }
@@ -530,7 +533,7 @@ fn kinds(args: &Value) -> Result<Vec<u32>, String> {
 fn ui(args: &Value) -> Result<wtg_rs::ui::Ui, String> {
     let ui = crate::source::names(args).trigger_ui;
     if ui.is_empty() {
-        return Err("no UI\\TriggerData.txt in `game` and `roots`".into());
+        return Err(format!("no UI\\TriggerData.txt in {}", crate::source::layers_named(args)));
     }
     Ok(ui)
 }
