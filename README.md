@@ -285,6 +285,21 @@ of object data in one file. The `obj_` tools work on each kind's file.
 | `w3o_split` | writes each kind's `war3map.w3?` to a folder |
 | `w3o_join`  | writes a `.w3o` from the object data in a folder or a map |
 
+### txt2
+
+XGM's markup (`.txt2` articles and resource pages), with `txt2-rs`. A
+text is a file on disk (`path`), one inside a map (`archive`), or the
+text itself (`text`). A long article is read by its outline and a part
+at a time; changes are made to the file as to any text.
+
+| tool           | does |
+|----------------|------|
+| `txt2_syntax`  | the markup, every inline and block construct (from `txt2-rs`'s README) |
+| `txt2_check`   | blocks without their closing line, closings without an opening, with line and column |
+| `txt2_outline` | the parts with their first and last lines: headings, spoilers and their titles, quotes, layouts and columns, code, tables, lists, images, galleries, polls, tiles; nested as in the text |
+| `txt2_get`     | one part's source, by title (exact, else the first containing it) or by the line it starts at; a heading's part runs to the next heading of its level |
+| `txt2_html`    | the HTML the editor's preview shows: a fragment, or a whole page (`page`), answered or written to `out` |
+
 ## Planned: JASS
 
 Not built yet. These are the next tools, and what the modules underneath
@@ -348,6 +363,7 @@ claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 - `w3i.rs`: the map info tools;
 - `imp.rs`, `mmp.rs`, `wct.rs`, `shd.rs`: imports, minimap icons, custom script, shadows;
 - `doo.rs`: doodads and units placed; `wtg.rs`: triggers; `w3o.rs`: object collections;
+- `txt2.rs`: txt2, XGM's markup;
 - `source.rs`: reading a file from disk or from inside an archive.
 
 The game's metadata comes from the editor's server, used as a library

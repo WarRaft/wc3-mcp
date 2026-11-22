@@ -27,6 +27,7 @@ shd-rs = { path = "../shd-rs" }
 doo-rs = { path = "../doo-rs" }
 wtg-rs = { path = "../wtg-rs" }
 w3o-rs = { path = "../w3o-rs" }
+txt2-rs = { path = "../txt2-rs" }
 parser-rs = { path = "../parser-rs" }
 # PNG pictures (zlib, CRC); storm-rs uses it already.
 flate2 = "1.1.11"

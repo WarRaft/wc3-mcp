@@ -12,6 +12,7 @@ mod doo;
 mod wtg;
 mod w3o;
 mod mpq;
+mod txt2;
 mod obj;
 mod png;
 mod rpc;
