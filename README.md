@@ -400,6 +400,10 @@ Claude Code: the `wc3-rs` repository registers it in its `.mcp.json`, from
 claude mcp add wc3 -- /path/to/wc3-mcp/target/release/wc3-mcp
 ```
 
+VS Code: the WC3 extension ships it (`wc3-rs/server/build.sh` builds it
+for every platform into the extension's `bin/`) and registers it as the
+**WC3** MCP server, started in the first workspace folder.
+
 ## Layout
 
 - `rpc.rs`: the protocol: `initialize`, `ping`, `tools/list`, `tools/call`;
