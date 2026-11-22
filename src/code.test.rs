@@ -105,6 +105,10 @@ fn builds_jass() {
     let r = call("jass_build", &json!({"files": [dir.join("src/a.j")], "out": out})).unwrap().unwrap();
     assert_eq!((r["built"].as_bool(), r["lines"].as_u64()), (Some(true), Some(10)));
     assert!(std::fs::read_to_string(&out).unwrap().contains("call Helper()"));
+    // Shorter names: Helper is `a`; main stays.
+    let r = call("jass_build", &json!({"files": [dir.join("src/a.j")], "uglify": true})).unwrap().unwrap();
+    assert!(r["script"].as_str().unwrap().contains("function a takes nothing returns nothing\n    local integer b = 1\n"), "{r}");
+    assert!(r["script"].as_str().unwrap().contains("function main takes nothing returns nothing\n    call a()\n"), "{r}");
     write(&dir.join("bad/c.j"), "constant string S = N()\nfunction N returns string\n    return \"\"\nendfunction\n");
     let r = call("jass_build", &json!({"dir": dir.join("bad")})).unwrap().unwrap();
     assert_eq!(r["built"], false);

@@ -35,6 +35,7 @@ pub fn tools() -> Value {
                 "files": {"type": "array", "items": {"type": "string"}, "description": "JASS files, in the order their main and config parts run"},
                 "dir": {"type": "string", "description": "A folder: its .j files, sorted by name, in place of `files`"},
                 "out": {"type": "string", "description": "Where to write the script; given back when left out"},
+                "uglify": {"type": "boolean", "description": "Shorter names: everything the game doesn't need as it is (the map's functions but main and config, globals, types, locals, parameters) renamed a, b ... a1, the most used the shortest; names in ExecuteFunc(\"F\") and TriggerRegisterVariableEvent literals with them (default false)"},
             }},
         },
         {
@@ -131,17 +132,19 @@ fn build(args: &Value) -> Result<Value, String> {
         .map(|p| Ok((p.to_string_lossy().into_owned(), String::from_utf8_lossy(&std::fs::read(p).map_err(|e| format!("{}: {e}", p.display()))?).into_owned())))
         .collect::<Result<_, String>>()?;
     let sources: Vec<wc3_build::from_jass::Source> = texts.iter().map(|(name, text)| wc3_build::from_jass::Source { name, text }).collect();
-    match wc3_build::jass_of(&sources) {
+    let options = wc3_build::jass::Options { uglify: args.get("uglify").and_then(Value::as_bool).unwrap_or(false) };
+    let built = wc3_build::from_jass::module(&sources).and_then(|m| wc3_build::jass::build_with(&m, &options));
+    match built {
         Err(errors) => {
             let errors: Vec<Value> = errors.iter().map(|e| json!({"file": e.origin.file, "line": e.origin.line, "message": e.message})).collect();
             Ok(json!({"built": false, "errors": errors}))
         }
-        Ok(script) => match args.get("out").and_then(Value::as_str) {
+        Ok(wc3_build::jass::Built { script, notes }) => match args.get("out").and_then(Value::as_str) {
             Some(out) => {
                 std::fs::write(out, &script).map_err(|e| format!("{out}: {e}"))?;
-                Ok(json!({"built": true, "files": paths.len(), "lines": script.lines().count(), "out": out}))
+                Ok(json!({"built": true, "files": paths.len(), "lines": script.lines().count(), "bytes": script.len(), "notes": notes, "out": out}))
             }
-            None => Ok(json!({"built": true, "files": paths.len(), "lines": script.lines().count(), "script": script})),
+            None => Ok(json!({"built": true, "files": paths.len(), "lines": script.lines().count(), "bytes": script.len(), "notes": notes, "script": script})),
         },
     }
 }

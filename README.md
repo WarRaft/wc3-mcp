@@ -335,7 +335,7 @@ what VS Code shows.
 | tool         | does |
 |--------------|------|
 | `code_check` | every problem of a project's code (JASS, Zinc, Lua, AngelScript): parse errors, lint with the project's `[lint]`, and each JASS name and type checked against the whole project and the game's scripts it runs with (`unknown-name`, `argument-count`, `type-mismatch`, `array-access`, `constant-assignment`), so a problem between files shows; one file's only, errors only, a limit |
-| `jass_build`   | builds JASS files (or a folder's) into one script the game reads, with `wc3-build`: this toolchain's JASS made the game's, `main` and `config` merged, globals and functions sorted (a cycle through `TriggerEvaluate`), locals to the top; written to `out` or given back; errors with their file and line |
+| `jass_build`   | builds JASS files (or a folder's) into one script the game reads, with `wc3-build`: this toolchain's JASS made the game's, `main` and `config` merged, globals and functions sorted (a cycle through `TriggerEvaluate`), locals to the top; with `uglify`, shorter names (everything the game doesn't need as it is renamed `a`, `b` ...); written to `out` or given back; errors with their file and line |
 | `jass_natives` | what the game's scripts declare as a project sees them (`common.j`, `Blizzard.j`, `common.ai` through its `game=` and roots, the last found winning: UjAPI's `common.j` over the game's): natives, functions, globals, each with its declaration, script, line and the comment above it; by a part of the name (the exact name first) or of the comment, by kind or script |
 
 ### Object collections
