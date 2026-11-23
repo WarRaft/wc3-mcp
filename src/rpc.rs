@@ -50,7 +50,7 @@ fn initialize(params: &Value) -> Value {
             the tools that need the game's files (names, UI\\TriggerData.txt, metadata) take `game` and `roots`, \
             and without them the settings of the project of the file they work on (the nearest wc3.bni above it, \
             or `project`); project_info shows a project's settings and where the editor's files come from, \
-            project_write changes them. A modified editor's additions (natives in the GUI) go in a folder root as \
+            project_write changes them, project_build builds its map (a [build]: the roots' files and war3map.j made anew). A modified editor's additions (natives in the GUI) go in a folder root as \
             UI\\TriggerData.patch.txt (and TriggerStrings.patch.txt ...), which change the game's file by meaning. \
             SLK tables (.slk: Units\\UnitBalance.slk, \
             the *MetaData.slk ...): slk_info for the columns, slk_read to query rows, \

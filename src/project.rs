@@ -30,6 +30,14 @@ pub fn tools() -> Value {
                 "text": {"type": "string", "description": "The whole text"},
             }, "required": ["path", "text"]},
         },
+        {
+            "name": "project_build",
+            "description": "Builds a project's map (a [build] of its wc3.bni: `out=` where, `build/<name>.w3x` by default; `uglify=true` short names): the map's files from its roots (the last that has a file wins; patches, .trg files, the project's code and wc3.bni left out), and war3map.j made anew of the map's files, its triggers (the project's .trg files, else the roots' war3map.wtg), the map's custom script (war3map.wct) and the project's code (vJASS, Zinc). When the first root is a map, the map built is a copy of it with the rest written in (a protected map's unnamed files stay). Gives where it was written, how many files, the script's lines; or every error, with its file and line, and nothing written.",
+            "inputSchema": {"type": "object", "properties": {
+                "path": {"type": "string", "description": "The project's wc3.bni, or any file or folder in it"},
+                "name": {"type": "string", "description": "The [build]'s name; the first one when left out"},
+            }, "required": ["path"]},
+        },
     ])
 }
 
@@ -38,6 +46,7 @@ pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
     Some(match name {
         "project_info" => info(args),
         "project_write" => write(args),
+        "project_build" => build(args),
         _ => return None,
     })
 }
@@ -93,7 +102,7 @@ fn info(args: &Value) -> Result<Value, String> {
         "roots": project.roots.iter().map(|p| place(p)).collect::<Vec<_>>(),
         "sources": project.sources.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
         "exclude": project.exclude.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
-        "builds": project.builds,
+        "builds": project.builds.iter().map(|b| serde_json::json!({"name": b.name, "out": b.out(&project.root), "uglify": b.uglify})).collect::<Vec<_>>(),
         "jass_dialect": project.jass_dialect.map(|d| format!("{d:?}").to_lowercase()),
         "lint": lint,
         "problems": issues(&problems),
@@ -129,3 +138,11 @@ fn write(args: &Value) -> Result<Value, String> {
 #[cfg(test)]
 #[path = "project.test.rs"]
 mod tests;
+
+fn build(args: &Value) -> Result<Value, String> {
+    let at = PathBuf::from(arg_str(args, "path")?);
+    match wc3_server::build::build_at(&at, args.get("name").and_then(Value::as_str)) {
+        Ok(b) => Ok(json!({"build": b.name, "out": b.out, "base": b.base, "files": b.files, "triggers": b.triggers, "script_lines": b.script_lines, "notes": b.notes})),
+        Err(errors) => Ok(json!({"errors": errors})),
+    }
+}
