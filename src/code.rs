@@ -30,7 +30,7 @@ pub fn tools() -> Value {
         },
         {
             "name": "jass_build",
-            "description": "Builds JASS files into one script the game reads (wc3-build): this toolchain's JASS (set, call, local, takes nothing returns nothing left out; locals anywhere; globals at the top level; any number of main and config) made the game's: main and config merged, globals into globals and sorted, functions sorted so none calls one below it (a cycle goes through TriggerEvaluate, as JassHelper's .evaluate), locals to the top. Give the files (in their order) or a folder (its .j files, sorted by name); the script is written to `out`, or given back. Errors with their file and line.",
+            "description": "Builds JASS files into one script the game reads (wc3-build), JassHelper's preprocessor run over them all first (textmacro/runtextmacro, novjass, import beside the file): this toolchain's JASS (set, call, local, takes nothing returns nothing left out; locals anywhere; globals at the top level; any number of main and config) made the game's: main and config merged, globals into globals and sorted, functions sorted so none calls one below it (a cycle goes through TriggerEvaluate, as JassHelper's .evaluate), locals to the top. Give the files (in their order) or a folder (its .j files, sorted by name); the script is written to `out`, or given back. Errors with their file and line.",
             "inputSchema": {"type": "object", "properties": {
                 "files": {"type": "array", "items": {"type": "string"}, "description": "JASS files, in the order their main and config parts run"},
                 "dir": {"type": "string", "description": "A folder: its .j files, sorted by name, in place of `files`"},
@@ -131,9 +131,14 @@ fn build(args: &Value) -> Result<Value, String> {
         .iter()
         .map(|p| Ok((p.to_string_lossy().into_owned(), String::from_utf8_lossy(&std::fs::read(p).map_err(|e| format!("{}: {e}", p.display()))?).into_owned())))
         .collect::<Result<_, String>>()?;
-    let sources: Vec<wc3_build::from_jass::Source> = texts.iter().map(|(name, text)| wc3_build::from_jass::Source { name, text }).collect();
-    let options = wc3_build::jass::Options { uglify: args.get("uglify").and_then(Value::as_bool).unwrap_or(false) };
-    let built = wc3_build::from_jass::module(&sources).and_then(|m| wc3_build::jass::build_with(&m, &options));
+    let sources: Vec<(wc3_build::from_jass::Source, jass_rs::Dialect)> = texts.iter().map(|(name, text)| (wc3_build::from_jass::Source { name, text }, jass_rs::Dialect::Jass)).collect();
+    let options = wc3_build::jass::Options { uglify: args.get("uglify").and_then(Value::as_bool).unwrap_or(false), ..Default::default() };
+    // JassHelper's `//! import "path"`: beside the file importing it.
+    let import = |from: &str, path: &str| -> Option<(String, String)> {
+        let p = std::path::Path::new(from).parent()?.join(path.replace('\\', "/"));
+        Some((p.to_string_lossy().into_owned(), String::from_utf8_lossy(&std::fs::read(&p).ok()?).into_owned()))
+    };
+    let built = wc3_build::from_jass::module_with(&sources, &import).and_then(|m| wc3_build::jass::build_with(&m, &options));
     match built {
         Err(errors) => {
             let errors: Vec<Value> = errors.iter().map(|e| json!({"file": e.origin.file, "line": e.origin.line, "message": e.message})).collect();
