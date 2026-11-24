@@ -102,7 +102,7 @@ fn info(args: &Value) -> Result<Value, String> {
         "roots": project.roots.iter().map(|p| place(p)).collect::<Vec<_>>(),
         "sources": project.sources.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
         "exclude": project.exclude.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
-        "builds": project.builds.iter().map(|b| serde_json::json!({"name": b.name, "out": b.out(&project.root), "uglify": b.uglify})).collect::<Vec<_>>(),
+        "builds": project.builds.iter().map(|b| serde_json::json!({"name": b.name, "out": b.out(&project), "script": b.script.extension(), "uglify": b.uglify})).collect::<Vec<_>>(),
         "jass_dialect": project.jass_dialect.map(|d| format!("{d:?}").to_lowercase()),
         "lint": lint,
         "problems": issues(&problems),
@@ -142,7 +142,7 @@ mod tests;
 fn build(args: &Value) -> Result<Value, String> {
     let at = PathBuf::from(arg_str(args, "path")?);
     match wc3_server::build::build_at(&at, args.get("name").and_then(Value::as_str)) {
-        Ok(b) => Ok(json!({"build": b.name, "out": b.out, "base": b.base, "files": b.files, "triggers": b.triggers, "script_lines": b.script_lines, "notes": b.notes})),
+        Ok(b) => Ok(json!({"build": b.name, "out": b.out, "base": b.base, "files": b.files, "triggers": b.triggers, "script": b.script, "script_lines": b.script_lines, "notes": b.notes})),
         Err(errors) => Ok(json!({"errors": errors})),
     }
 }
