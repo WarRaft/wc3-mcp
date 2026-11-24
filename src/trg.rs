@@ -299,7 +299,11 @@ fn write_all(files: &[(String, String)]) -> Result<(), String> {
 
 fn extract(args: &Value) -> Result<Value, String> {
     let (f, _) = crate::wtg::open(args)?;
-    let made = wtg_rs::text::to_files(&f)?;
+    // The map's custom script beside it: the code of custom text, and the map's own.
+    let (path, archive) = crate::source::file(args, "war3map.wtg")?;
+    let script = std::path::Path::new(path).with_file_name("war3map.wct");
+    let wct = crate::source::read_bytes(&script.to_string_lossy(), archive).ok().and_then(|b| wc3_server::customtext::document(&script, &b)).map(|d| d.text);
+    let made = wc3_server::triggers::extract_files(&f, wct.as_deref())?;
     let dir = PathBuf::from(arg_str(args, "dir")?);
     let replace = args.get("replace").and_then(Value::as_bool).unwrap_or(false);
     let there: Vec<&str> = made.files.iter().filter(|(p, _)| dir.join(p).exists()).map(|(p, _)| p.as_str()).collect();
@@ -325,7 +329,11 @@ fn extract(args: &Value) -> Result<Value, String> {
         // shows them.
         "files": (made.files.len() <= 100).then(|| made.files.iter().map(|(p, _)| p).collect::<Vec<_>>()),
         "custom_text_triggers": custom,
-        "note": if custom > 0 { "triggers of custom text (custom_text=1) have their code in the map's war3map.wct (wct_text), not in their files" } else { "" },
+        "note": match (custom > 0, wct.is_some()) {
+            (_, true) => "each trigger of custom text's code is beside its .trg (X.j), the project's code standing for its piece of the map's war3map.wct; the map's own custom script stays in war3map.wct",
+            (true, false) => "no war3map.wct beside war3map.wtg: the triggers of custom text are without their code",
+            _ => "",
+        },
     }))
 }
 
