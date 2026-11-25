@@ -65,7 +65,7 @@ pub fn tools() -> Value {
         },
         {
             "name": "wtg_text",
-            "description": "A map's whole trigger file as text: [wtg], then [category], [variable] and [trigger] sections. Large for big maps: wtg_list and wtg_get show parts.",
+            "description": "A map's whole trigger file as text: [wtg], then [category], [variable] and [trigger] sections. A file of 1.31 and later (its tree) has tree=1 and its sections in the tree's order, each with its id= (a category's parent=, open=); kept so when written back. Large for big maps: wtg_list and wtg_get show parts.",
             "inputSchema": {"type": "object", "properties": with(json!({"path": path, "archive": archive_schema()}))},
         },
         {
@@ -81,7 +81,7 @@ pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
     Some(match name {
         "wtg_list" => open(args).map(|(f, _)| list(&f, args)),
         "wtg_get" => open(args).and_then(|(f, _)| get(&f, args)),
-        "wtg_text" => open(args).and_then(|(f, _)| wtg_rs::text::to_text(&f).map(Value::String)),
+        "wtg_text" => open_any(args).and_then(|f| wtg_rs::text::to_text_any(&f).map(Value::String)),
         "wtg_set" | "wtg_new" | "wtg_delete" | "wtg_write" => change(name, args),
         _ => return None,
     })
@@ -98,10 +98,13 @@ fn data(args: &Value) -> Result<TriggerData, String> {
     Ok(data)
 }
 
-fn read(path: &str, bytes: &[u8], data: &TriggerData) -> Result<Triggers, String> {
+/// The triggers of the file `bytes`: a 1.31 file's tree as a classic
+/// file's, and what the tree has beyond (`wtg_rs::tree::split`), for it to
+/// be written back of its layout.
+fn read(path: &str, bytes: &[u8], data: &TriggerData) -> Result<(Triggers, Option<wtg_rs::tree::TreeExtra>), String> {
     match wtg_rs::parse_any(bytes, data).map_err(|e| format!("{path}: {e}"))? {
-        wtg_rs::File::Classic(f) => Ok(f),
-        wtg_rs::File::Tree(_) => Err(format!("{path}: the layout of 1.31 and later isn't shown as text yet")),
+        wtg_rs::File::Classic(f) => Ok((f, None)),
+        wtg_rs::File::Tree(t) => wtg_rs::tree::split(&t).map(|(f, x)| (f, Some(x))).map_err(|e| format!("{path}: {e}")),
     }
 }
 
@@ -110,8 +113,16 @@ pub(crate) fn open(args: &Value) -> Result<(Triggers, TriggerData), String> {
     // The file first: a file that isn't there is the first thing to say.
     let bytes = crate::source::read_bytes(path, archive)?;
     let data = data(args)?;
-    let f = read(path, &bytes, &data)?;
+    let (f, _) = read(path, &bytes, &data)?;
     Ok((f, data))
+}
+
+/// The file of either layout, as it is.
+fn open_any(args: &Value) -> Result<wtg_rs::File, String> {
+    let (path, archive) = file(args, "war3map.wtg")?;
+    let bytes = crate::source::read_bytes(path, archive)?;
+    let data = data(args)?;
+    wtg_rs::parse_any(&bytes, &data).map_err(|e| format!("{path}: {e}"))
 }
 
 fn ecas(e: &[wtg_rs::Eca], counts: &mut [usize; 3]) {
@@ -201,14 +212,18 @@ fn sections(f: &Triggers, text: &str, data: &TriggerData) -> Result<Triggers, St
 fn change(name: &str, args: &Value) -> Result<Value, String> {
     let path = arg_str(args, "path")?;
     let data = data(args)?;
-    let mut f = if name == "wtg_write" {
+    let (mut f, mut tree) = if name == "wtg_write" {
         let p = wtg_rs::text::from_text(arg_str(args, "text")?, Some(&data));
-        p.file.ok_or_else(|| crate::source::text_errors(p.errors.iter().map(|e| (e.line, e.message.as_str()))))?
+        let tree = p.tree.clone();
+        (p.file.ok_or_else(|| crate::source::text_errors(p.errors.iter().map(|e| (e.line, e.message.as_str()))))?, tree)
     } else {
         read(path, &std::fs::read(path).map_err(|e| format!("{path}: {e}"))?, &data)?
     };
-    // The custom script beside it, kept in step: (removed, added).
+    // The custom script beside it, kept in step: (removed, added); 1.31's
+    // has a piece for each trigger that isn't a comment only.
     let mut wct: (Vec<usize>, usize) = (Vec::new(), 0);
+    let mut new_comments = 0;
+    let comments_before: Vec<bool> = f.triggers.iter().map(|t| t.is_comment != 0).collect();
     match name {
         "wtg_set" => {
             let i = find(&f, args.get("trigger").ok_or("`trigger` is missing")?)?;
@@ -220,10 +235,12 @@ fn change(name: &str, args: &Value) -> Result<Value, String> {
         }
         "wtg_new" => {
             let new = sections(&f, arg_str(args, "text")?, &data)?;
-            wct.1 = new.triggers.len();
             f.categories.extend(new.categories);
             f.variables.extend(new.variables);
+            wct.1 = new.triggers.len();
+            let added_comments = new.triggers.iter().filter(|t| t.is_comment != 0).count();
             f.triggers.extend(new.triggers);
+            new_comments = added_comments;
         }
         "wtg_delete" => {
             let mut gone = picks(&f, args)?;
@@ -231,27 +248,41 @@ fn change(name: &str, args: &Value) -> Result<Value, String> {
             gone.dedup();
             for &i in gone.iter().rev() {
                 f.triggers.remove(i);
+                if let Some(x) = &mut tree {
+                    x.remove_trigger(i);
+                }
             }
             wct.0 = gone;
         }
         _ => {}
     }
-    let bytes = f.to_bytes().map_err(|e| format!("nothing written: {e}"))?;
+    // Of its layout: a 1.31 file's tree joined again.
+    let bytes = match &tree {
+        Some(x) => wtg_rs::tree::join(&f, x).to_bytes(),
+        None => f.to_bytes(),
+    }
+    .map_err(|e| format!("nothing written: {e}"))?;
     // The custom script first: if it can't follow, nothing is written.
     let wct_path = std::path::Path::new(path).with_file_name("war3map.wct");
     let mut wct_note = Value::Null;
     if (!wct.0.is_empty() || wct.1 > 0) && wct_path.is_file() {
         let code = std::fs::read(&wct_path).map_err(|e| format!("{}: {e}", wct_path.display()))?;
         let mut custom = wct_rs::parse(&code).map_err(|e| format!("nothing written: {}: {e}", wct_path.display()))?;
-        if custom.magic {
-            return Err("nothing written: war3map.wct is 1.31's, with code only for some triggers: change it with wct_write".into());
-        }
-        for &i in wct.0.iter().rev() {
+        // A trigger's piece: its place among those that have one.
+        let piece = |i: usize| -> Option<usize> {
+            if !custom.magic {
+                return Some(i);
+            }
+            (!comments_before.get(i).copied().unwrap_or(false)).then(|| comments_before[..i].iter().filter(|c| !**c).count())
+        };
+        let gone: Vec<usize> = wct.0.iter().filter_map(|&i| piece(i)).collect();
+        for &i in gone.iter().rev() {
             if i < custom.triggers.len() {
                 custom.triggers.remove(i);
             }
         }
-        custom.triggers.extend((0..wct.1).map(|_| wct_rs::Code(None)));
+        let added = if custom.magic { wct.1 - new_comments } else { wct.1 };
+        custom.triggers.extend((0..added).map(|_| wct_rs::Code(None)));
         std::fs::write(&wct_path, custom.to_bytes().map_err(|e| format!("nothing written: {e}"))?)
             .map_err(|e| format!("{}: {e}", wct_path.display()))?;
         wct_note = json!({"written": wct_path, "pieces": custom.triggers.len()});
