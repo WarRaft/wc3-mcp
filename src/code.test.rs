@@ -176,9 +176,9 @@ fn rename_inside_a_maps_custom_script() {
 
     // Only in the script made of the triggers: theirs, refused.
     let err = call("jass_rename", &json!({"path": dir.join("proj"), "name": "udg_Count", "new_name": "udg_Total"})).unwrap().unwrap_err();
-    assert!(err.starts_with("`udg_Count` is declared only in map.w3x/war3map.j, which World Editor makes"), "{err}");
+    assert!(err.starts_with("nothing renamed: `udg_Count` is declared only in war3map.j, which World Editor makes"), "{err}");
     let err = call("jass_rename", &json!({"path": dir.join("proj"), "name": "InitTrig_A", "new_name": "InitTrig_B"})).unwrap().unwrap_err();
-    assert!(err.starts_with("`InitTrig_A` is what World Editor's script calls for the trigger `A`"), "{err}");
+    assert!(err.starts_with("nothing renamed: `InitTrig_A` is what World Editor's script calls for the trigger `A`"), "{err}");
     // Also there: the custom script's is the one meant (its copy follows).
     let r = call("jass_rename", &json!({"path": dir.join("proj"), "name": "Shared", "new_name": "Common"})).unwrap().unwrap();
     assert_eq!(r["renamed"], 4, "{r}");
