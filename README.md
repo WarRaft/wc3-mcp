@@ -367,6 +367,16 @@ at a time; changes are made to the file as to any text.
 | `txt2_get`     | one part's source, by title (exact, else the first containing it) or by the line it starts at; a heading's part runs to the next heading of its level |
 | `txt2_html`    | the HTML the editor's preview shows: a fragment, or a whole page (`page`), answered or written to `out` |
 
+### Models
+
+Models (`.mdx`), with [`mdx-rs`](../mdx-rs): a model on disk (`path`),
+inside an archive or a map (`archive`), or by its name in the game's
+files (through `game` and `roots`, the project's by default).
+
+| tool       | does |
+|------------|------|
+| `mdx_info` | version, name, extent; geosets (vertices, triangles, material, texture coordinate sets), materials and their layers (filter mode, texture, alpha), textures (a path, or the game's replaceable one: 1 team colour, 2 team glow, 11 cliff ...), sequences (frames, looping), the other chunks and their sizes |
+
 ## JASS
 
 Built. These are the tools, and what the modules underneath are

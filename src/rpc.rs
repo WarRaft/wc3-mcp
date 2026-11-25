@@ -92,6 +92,7 @@ fn initialize(params: &Value) -> Value {
             to write lines; trg_write writes a file after checking it, trg_rename renames a trigger and its \
             references, trg_variable changes or deletes a variable safely (its uses renamed, what breaks \
             listed first). Object collections (.w3o): w3o_info, w3o_split into each kind's file, w3o_join. \
+            Models (.mdx): mdx_info for what's in one (geosets, materials, textures, sequences), from disk, a map or the game's files. \
             txt2, XGM's markup (.txt2 articles): txt2_syntax before writing it, txt2_check, txt2_outline for \
             the parts of a big article with their lines, txt2_get for one part's text, txt2_html for the page.",
     })
@@ -118,6 +119,7 @@ fn call(params: &Value) -> Value {
         .or_else(|| crate::trg::call(name, &args))
         .or_else(|| crate::w3o::call(name, &args))
         .or_else(|| crate::txt2::call(name, &args))
+        .or_else(|| crate::mdx::call(name, &args))
         .or_else(|| crate::project::call(name, &args))
         .or_else(|| crate::code::call(name, &args))
         .unwrap_or_else(|| crate::slk::call(name, &args));
@@ -161,6 +163,7 @@ fn tools() -> Value {
     all.extend(crate::trg::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::w3o::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::txt2::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::mdx::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::project::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::code::tools().as_array().cloned().unwrap_or_default());
     Value::Array(all)
