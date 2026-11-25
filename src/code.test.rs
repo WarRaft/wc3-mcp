@@ -160,23 +160,33 @@ fn rename_inside_a_maps_custom_script() {
         version: 1,
         comment: vec![],
         header: wct_rs::Code::new(b"function Shared takes nothing returns nothing\nendfunction\n"),
-        triggers: vec![wct_rs::Code::new(b"function Trig_A takes nothing returns nothing\n    call Shared()\nendfunction\n")],
+        triggers: vec![wct_rs::Code::new(b"function Trig_A takes nothing returns nothing\n    call Shared()\nendfunction\nfunction InitTrig_A takes nothing returns nothing\nendfunction\n")],
     };
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("war3map.wct"), custom.to_bytes().unwrap()).unwrap();
+    // World Editor's script made of the triggers beside it: a variable's
+    // global, and a copy of the custom script.
+    std::fs::write(src.join("war3map.j"), "globals\n    integer udg_Count = 0\nendglobals\nfunction Shared takes nothing returns nothing\nendfunction\nfunction main takes nothing returns nothing\n    set udg_Count = 1\nendfunction\n").unwrap();
+    std::fs::write(src.join("war3map.wtg"), b"WTG!").unwrap();
     let map = dir.join("proj/map.w3x");
     std::fs::create_dir_all(map.parent().unwrap()).unwrap();
     crate::mpq::call("mpq_create", &json!({"archive": map, "dir": src})).unwrap().unwrap();
     write(&dir.join("proj/wc3.bni"), &format!("[project]\ngame={}\n[map]\nroot=map.w3x\n[code]\nsources=code\n", dir.join("game").display()));
     write(&dir.join("proj/code/b.j"), "function B takes nothing returns nothing\n    call Shared()\nendfunction\n");
 
+    // Only in the script made of the triggers: theirs, refused.
+    let err = call("jass_rename", &json!({"path": dir.join("proj"), "name": "udg_Count", "new_name": "udg_Total"})).unwrap().unwrap_err();
+    assert!(err.starts_with("`udg_Count` is declared only in map.w3x/war3map.j, which World Editor makes"), "{err}");
+    let err = call("jass_rename", &json!({"path": dir.join("proj"), "name": "InitTrig_A", "new_name": "InitTrig_B"})).unwrap().unwrap_err();
+    assert!(err.starts_with("`InitTrig_A` is what World Editor's script calls for the trigger `A`"), "{err}");
+    // Also there: the custom script's is the one meant (its copy follows).
     let r = call("jass_rename", &json!({"path": dir.join("proj"), "name": "Shared", "new_name": "Common"})).unwrap().unwrap();
-    assert_eq!(r["renamed"], 3, "{r}");
+    assert_eq!(r["renamed"], 4, "{r}");
     assert!(std::fs::read_to_string(dir.join("proj/code/b.j")).unwrap().contains("call Common()"));
     // The map's custom script, its bytes again, the names changed.
     let bytes = wc3_server::map::bytes(&map.join("war3map.wct")).unwrap();
     let back = wct_rs::parse(&bytes).unwrap();
     assert_eq!(back.header.text(), b"function Common takes nothing returns nothing\nendfunction\n");
-    assert_eq!(back.triggers[0].text(), b"function Trig_A takes nothing returns nothing\n    call Common()\nendfunction\n");
+    assert_eq!(back.triggers[0].text(), b"function Trig_A takes nothing returns nothing\n    call Common()\nendfunction\nfunction InitTrig_A takes nothing returns nothing\nendfunction\n");
     let _ = std::fs::remove_dir_all(&dir);
 }

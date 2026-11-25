@@ -142,6 +142,18 @@ fn position_of(text: &str, o: &parser_rs::Occurrence) -> wc3_server::document::P
     wc3_server::document::Position::new(o.line as u32 - 1, before.encode_utf16().count() as u32)
 }
 
+/// Is `doc` a `war3map.j` World Editor makes from the triggers beside it
+/// (`war3map.wtg`): what it declares of them (`udg_`, `gg_trg_`,
+/// `gg_unit_` ...) is theirs, and it's made again from them.
+fn made_from_triggers(doc: &wc3_server::document::Document) -> bool {
+    let Some(path) = doc.path.as_deref() else { return false };
+    if !path.file_name().is_some_and(|n| n.eq_ignore_ascii_case("war3map.j")) {
+        return false;
+    }
+    let wtg = path.with_file_name("war3map.wtg");
+    if wc3_server::map::split(&wtg).is_some() { wc3_server::map::bytes(&wtg).is_some() } else { wtg.is_file() }
+}
+
 fn rename(args: &Value) -> Result<Value, String> {
     let name = arg_str(args, "name")?;
     let new_name = arg_str(args, "new_name")?;
@@ -164,6 +176,23 @@ fn rename(args: &Value) -> Result<Value, String> {
     // A name declared again in the same file and place (a method's
     // overloads) is one.
     decls.dedup_by(|a, b| a.0 == b.0 && a.2.line == b.2.line && a.2.col == b.2.col);
+    // A copy in a script made from the triggers isn't the one meant: the
+    // source is (the custom script's, a file's); one only there is theirs.
+    if !decls.is_empty() && decls.iter().all(|d| made_from_triggers(d.1)) {
+        return Err(format!(
+            "`{name}` is declared only in {}, which World Editor makes from the map's triggers (a `udg_` is a variable's, a `gg_trg_` a trigger's, a `gg_unit_`, `gg_rct_` ... something placed): rename that (trg_variable, trg_rename, the map's editor), or it comes back the next time the map is saved or built",
+            relative(&root, decls[0].0)
+        ));
+    }
+    decls.retain(|d| !made_from_triggers(d.1));
+    // World Editor's script calls a trigger's `InitTrig_<name>`: the
+    // trigger's name, not the function's own.
+    if name.starts_with("InitTrig_") && decls.iter().any(|d| d.1.path.as_deref().is_some_and(wc3_server::customtext::is_custom_text_file)) {
+        return Err(format!(
+            "`{name}` is what World Editor's script calls for the trigger `{}`: rename the trigger (trg_rename, the map's editor), its InitTrig_ and gg_trg_ follow",
+            &name["InitTrig_".len()..]
+        ));
+    }
     let (id, doc, target) = match decls.as_slice() {
         [] => {
             // The game's own: said so.
