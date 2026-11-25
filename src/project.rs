@@ -17,14 +17,14 @@ pub fn tools() -> Value {
     json!([
         {
             "name": "project_info",
-            "description": "A project's settings (wc3.bni, the nearest one in the folder of `path` or above): its game folders and map roots (each: does it exist, a folder or a map), code sources and exclusions, builds, JASS dialect, lint settings, the problems of the settings, the manifest's text; and the editor's files the layers give (UI\\TriggerData.txt ...: from where, and the patches beside them, X.patch.txt changing X by meaning). Change the settings with project_write.",
+            "description": "A project's settings (wc3.bni, the nearest one in the folder of `path` or above): its game folders and map roots (each: does it exist, a folder or a map), code sources and exclusions, builds, JASS dialect, lint settings, the external tools, the problems of the settings, the manifest's text; and the editor's files the layers give (UI\\TriggerData.txt ...: from where, and the patches beside them, X.patch.txt changing X by meaning). Change the settings with project_write.",
             "inputSchema": {"type": "object", "properties": {
                 "path": {"type": "string", "description": "A project's wc3.bni, or any file or folder in it (a map, a trigger folder)"},
             }, "required": ["path"]},
         },
         {
             "name": "project_write",
-            "description": "Writes a project's wc3.bni from its whole text (made if missing), after reading it as the editor does: every error, with its line, and nothing written; warnings come back with what was written. Sections: [project] game= (game folders, lowest first), [map] root= (folders or maps whose top is the map's, lowest first; patches to the editor's files go in a folder root: UI\\TriggerData.patch.txt), [code] sources=, exclude= (masks), [build] name=, [jass] dialect=, [lint] <rule>=off|warning|error. Paths are against the project's folder.",
+            "description": "Writes a project's wc3.bni from its whole text (made if missing), after reading it as the editor does: every error, with its line, and nothing written; warnings come back with what was written. Sections: [project] game= (game folders, lowest first), [map] root= (folders or maps whose top is the map's, lowest first; patches to the editor's files go in a folder root: UI\\TriggerData.patch.txt), [code] sources=, exclude= (masks), [build] name=, [jass] dialect=, [lint] <rule>=off|warning|error, [external] NAME=\"program\",\"arg\" (the tools JassHelper's //! external NAME runs on the map built: \"wine\",\"tools/ObjectMerger.exe\" for a Windows one). Paths are against the project's folder.",
             "inputSchema": {"type": "object", "properties": {
                 "path": {"type": "string", "description": "The wc3.bni, or the project's folder"},
                 "text": {"type": "string", "description": "The whole text"},
@@ -105,6 +105,7 @@ fn info(args: &Value) -> Result<Value, String> {
         "builds": project.builds.iter().map(|b| serde_json::json!({"name": b.name, "out": b.out(&project), "script": b.script.extension(), "uglify": b.uglify, "optimize": b.optimize})).collect::<Vec<_>>(),
         "jass_dialect": project.jass_dialect.map(|d| format!("{d:?}").to_lowercase()),
         "lint": lint,
+        "externals": project.externals.iter().map(|(t, argv)| json!({"name": t, "command": argv})).collect::<Vec<_>>(),
         "problems": issues(&problems),
         "layers_not_opened": open_errors,
         "editor_files": editor,
