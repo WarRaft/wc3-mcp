@@ -48,7 +48,9 @@ pub fn tools() -> Value {
                 "dir": {"type": "string", "description": "A folder: its .j files, sorted by name, in place of `files`"},
                 "out": {"type": "string", "description": "Where to write the script; given back when left out"},
                 "uglify": {"type": "boolean", "description": "Shorter names: everything the game doesn't need as it is (the map's functions but main and config, globals, types, locals, parameters) renamed a, b ... a1, the most used the shortest; names in ExecuteFunc(\"F\") and TriggerRegisterVariableEvent literals with them (default false)"},
-                "optimize": {"type": "boolean", "description": "Optimized as JassHelper does: a one-line function's calls inlined where nothing can change (each parameter read once, in order, calls after them), and the functions and globals nothing reachable from main and config uses left out (default false)"},
+                "inline": {"type": "boolean", "description": "As JassHelper inlines: a one-line function's calls are what its line does, where nothing can change (each parameter read once, in order, calls after them) (default false)"},
+                "dead_code": {"type": "boolean", "description": "The functions and globals nothing reachable from main and config uses left out (default false)"},
+                "string_hash": {"type": "boolean", "description": "StringHash(\"text\") of an ASCII literal made the number the game gives (its SStrHash2), so the game hashes nothing as it runs (default false)"},
             }},
         },
         {
@@ -269,7 +271,7 @@ fn build(args: &Value) -> Result<Value, String> {
         .collect::<Result<_, String>>()?;
     let sources: Vec<(wc3_build::from_jass::Source, jass_rs::Dialect)> = texts.iter().map(|(name, text)| (wc3_build::from_jass::Source { name, text }, jass_rs::Dialect::Jass)).collect();
     let flag = |k: &str| args.get(k).and_then(Value::as_bool).unwrap_or(false);
-    let options = wc3_build::jass::Options { uglify: flag("uglify"), optimize: flag("optimize"), ..Default::default() };
+    let options = wc3_build::jass::Options { uglify: flag("uglify"), inline: flag("inline"), dead_code: flag("dead_code"), string_hash: flag("string_hash"), ..Default::default() };
     // JassHelper's `//! import "path"`: beside the file importing it.
     let import = |from: &str, path: &str| -> Option<(String, String)> {
         let p = std::path::Path::new(from).parent()?.join(path.replace('\\', "/"));
