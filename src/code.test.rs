@@ -115,3 +115,68 @@ fn builds_jass() {
     assert_eq!(r["errors"][0]["line"], 1);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn rename_across_the_project() {
+    let dir = temp("rename");
+    let proj = project(&dir);
+    write(&proj.join("c.j"), "function G\n    local integer n = 1\n    Helper(n)\nendfunction\nfunction H\n    local integer n = 2\nendfunction\n");
+    let run = |a: Value| call("jass_rename", &a).expect("a tool of this module");
+    // A dry run: what would change, nothing written.
+    let r = run(json!({"path": proj, "name": "Helper", "new_name": "Assist", "dry_run": true})).unwrap();
+    assert_eq!((r["renamed"].as_u64(), r["written"].as_bool()), (Some(3), Some(false)), "{r}");
+    assert!(std::fs::read_to_string(proj.join("a.j")).unwrap().contains("function Helper"));
+    // Renamed: in every file.
+    let r = run(json!({"path": proj, "name": "Helper", "new_name": "Assist"})).unwrap();
+    assert_eq!(r["files"].as_array().unwrap().len(), 3, "{r}");
+    assert!(std::fs::read_to_string(proj.join("a.j")).unwrap().starts_with("function Assist takes integer n"));
+    assert!(std::fs::read_to_string(proj.join("b.j")).unwrap().contains("    Assist(1, 2)\n"));
+    assert!(std::fs::read_to_string(proj.join("c.j")).unwrap().contains("    Assist(n)\n"));
+    // Two locals named alike: which one, by file and line; the other stays.
+    let err = run(json!({"path": proj, "name": "n", "new_name": "count", "file": proj.join("c.j")})).unwrap_err();
+    assert!(err.contains("declared 2 times") && err.contains("c.j:2") && err.contains("c.j:6"), "{err}");
+    run(json!({"path": proj, "name": "n", "new_name": "count", "file": proj.join("c.j"), "line": 2})).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(proj.join("c.j")).unwrap(),
+        "function G\n    local integer count = 1\n    Assist(count)\nendfunction\nfunction H\n    local integer n = 2\nendfunction\n"
+    );
+    // Refused, nothing written: a native, a name taken, a name not declared.
+    assert_eq!(run(json!({"path": proj, "name": "KillUnit", "new_name": "Kill"})).unwrap_err(), "`KillUnit` is the game's (common.j): it can't be renamed");
+    assert!(run(json!({"path": proj, "name": "Nowhere", "new_name": "Somewhere"})).unwrap_err().starts_with("nothing named `Nowhere` is declared"));
+    let err = run(json!({"path": proj, "name": "G", "new_name": "H"})).unwrap_err();
+    assert!(err.starts_with("nothing renamed: `H` is already declared"), "{err}");
+    assert!(run(json!({"path": proj, "name": "F", "new_name": "1x"})).unwrap_err().starts_with("nothing renamed:"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn rename_inside_a_maps_custom_script() {
+    let dir = temp("rename-map");
+    write(&dir.join("game/Scripts/common.j"), "type unit extends handle\n");
+    // The map: its custom script declares Shared and calls it.
+    let src = dir.join("src");
+    let custom = wct_rs::CustomText {
+        magic: false,
+        version: 1,
+        comment: vec![],
+        header: wct_rs::Code::new(b"function Shared takes nothing returns nothing\nendfunction\n"),
+        triggers: vec![wct_rs::Code::new(b"function Trig_A takes nothing returns nothing\n    call Shared()\nendfunction\n")],
+    };
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("war3map.wct"), custom.to_bytes().unwrap()).unwrap();
+    let map = dir.join("proj/map.w3x");
+    std::fs::create_dir_all(map.parent().unwrap()).unwrap();
+    crate::mpq::call("mpq_create", &json!({"archive": map, "dir": src})).unwrap().unwrap();
+    write(&dir.join("proj/wc3.bni"), &format!("[project]\ngame={}\n[map]\nroot=map.w3x\n[code]\nsources=code\n", dir.join("game").display()));
+    write(&dir.join("proj/code/b.j"), "function B takes nothing returns nothing\n    call Shared()\nendfunction\n");
+
+    let r = call("jass_rename", &json!({"path": dir.join("proj"), "name": "Shared", "new_name": "Common"})).unwrap().unwrap();
+    assert_eq!(r["renamed"], 3, "{r}");
+    assert!(std::fs::read_to_string(dir.join("proj/code/b.j")).unwrap().contains("call Common()"));
+    // The map's custom script, its bytes again, the names changed.
+    let bytes = wc3_server::map::bytes(&map.join("war3map.wct")).unwrap();
+    let back = wct_rs::parse(&bytes).unwrap();
+    assert_eq!(back.header.text(), b"function Common takes nothing returns nothing\nendfunction\n");
+    assert_eq!(back.triggers[0].text(), b"function Trig_A takes nothing returns nothing\n    call Common()\nendfunction\n");
+    let _ = std::fs::remove_dir_all(&dir);
+}

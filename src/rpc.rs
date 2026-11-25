@@ -52,6 +52,9 @@ fn initialize(params: &Value) -> Value {
             or `project`); project_info shows a project's settings and where the editor's files come from, \
             project_write changes them, project_build builds its map (a [build]: the roots' files and war3map.j made anew). A modified editor's additions (natives in the GUI) go in a folder root as \
             UI\\TriggerData.patch.txt (and TriggerStrings.patch.txt ...), which change the game's file by meaning. \
+            A project's code (JASS, vJASS, Zinc, Lua, AngelScript): code_check gives its problems as the editor \
+            shows them, jass_rename renames a symbol everywhere it means it (ask it rather than editing names by \
+            hand), jass_natives looks up the game's natives and functions, jass_build builds JASS files into one script. \
             SLK tables (.slk: Units\\UnitBalance.slk, \
             the *MetaData.slk ...): slk_info for the columns, slk_read to query rows, \
             slk_get / slk_set for one cell, slk_lint for problems; a table can be read \

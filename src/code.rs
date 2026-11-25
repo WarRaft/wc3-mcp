@@ -29,6 +29,18 @@ pub fn tools() -> Value {
             }, "required": ["path"]},
         },
         {
+            "name": "jass_rename",
+            "description": "Renames a name of a project's code everywhere it means that symbol, as the editor's rename does: a function, global, local, parameter, type, struct, method, field, library, scope ... in every file of the project (JASS, vJASS, Zinc, Lua, AngelScript; the custom script inside a map too), shadowing and scopes respected. Refused, with why and nothing written, when it can't be done safely: a native or something of the game's scripts, a name declared nowhere in the project, a member declared in several structs, a new name that isn't a name or is already declared there, a map that can't be written. Give the current name; when several declarations have it (two functions' locals), `file` and `line` pick one. `dry_run` shows the edits without writing. Lines and columns from 1.",
+            "inputSchema": {"type": "object", "properties": {
+                "path": {"type": "string", "description": "The project: its wc3.bni, its folder, or any file in it (the nearest wc3.bni above it)"},
+                "name": {"type": "string", "description": "The current name"},
+                "new_name": {"type": "string", "description": "The name it gets"},
+                "file": {"type": "string", "description": "The file of the declaration meant, when several have the name"},
+                "line": {"type": "integer", "minimum": 1, "description": "Its line there, when the file has several"},
+                "dry_run": {"type": "boolean", "description": "Only show what would change (default false)"},
+            }, "required": ["path", "name", "new_name"]},
+        },
+        {
             "name": "jass_build",
             "description": "Builds JASS files into one script the game reads (wc3-build), JassHelper's preprocessor run over them all first (textmacro/runtextmacro, novjass, import beside the file): this toolchain's JASS (set, call, local, takes nothing returns nothing left out; locals anywhere; globals at the top level; any number of main and config) made the game's: main and config merged, globals into globals and sorted, functions sorted so none calls one below it (a cycle goes through TriggerEvaluate, as JassHelper's .evaluate), locals to the top. Give the files (in their order) or a folder (its .j files, sorted by name); the script is written to `out`, or given back. Errors with their file and line.",
             "inputSchema": {"type": "object", "properties": {
@@ -63,6 +75,7 @@ pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
         "code_check" => check(args),
         "jass_natives" => natives(args),
         "jass_build" => build(args),
+        "jass_rename" => rename(args),
         _ => return None,
     })
 }
@@ -107,6 +120,122 @@ fn check(args: &Value) -> Result<Value, String> {
     let total = problems.len();
     problems.truncate(limit);
     Ok(json!({"project": root, "files": files, "total": total, "problems": problems}))
+}
+
+/// The project's workspace, loaded as the editor loads it, and its root.
+fn workspace(args: &Value) -> Result<(Workspace, PathBuf), String> {
+    let at = PathBuf::from(arg_str(args, "path")?);
+    let at = std::path::absolute(&at).unwrap_or(at);
+    let (_, manifest, _) = crate::source::load_project(&at)
+        .ok_or(format!("{}: no {} in it or above it (project_write makes one)", at.display(), wc3_server::project::MANIFEST))?;
+    let root = manifest.parent().ok_or("a manifest without a folder")?.to_path_buf();
+    let mut ws = Workspace::default();
+    ws.set_roots(vec![root.clone()]);
+    ws.take_reports();
+    Ok((ws, root))
+}
+
+/// The editor's position (UTF-16 columns from 0) of a name's start.
+fn position_of(text: &str, o: &parser_rs::Occurrence) -> wc3_server::document::Position {
+    let line = text.lines().nth(o.line - 1).unwrap_or("");
+    let before: String = line.chars().take(o.col - 1).collect();
+    wc3_server::document::Position::new(o.line as u32 - 1, before.encode_utf16().count() as u32)
+}
+
+fn rename(args: &Value) -> Result<Value, String> {
+    let name = arg_str(args, "name")?;
+    let new_name = arg_str(args, "new_name")?;
+    let file = args.get("file").and_then(Value::as_str).map(|f| {
+        let p = PathBuf::from(f);
+        std::path::absolute(&p).unwrap_or(p)
+    });
+    let line = args.get("line").and_then(Value::as_u64).map(|l| l as usize);
+    let dry_run = args.get("dry_run").and_then(Value::as_bool).unwrap_or(false);
+    let (ws, root) = workspace(args)?;
+
+    // The declaration meant: the only one of the name, or the one `file`
+    // and `line` pick.
+    let mut decls: Vec<(&str, &wc3_server::document::Document, &parser_rs::Occurrence)> = ws
+        .all_files()
+        .filter(|(id, _, _)| !ws.is_game(id))
+        .filter(|(id, _, _)| file.as_deref().is_none_or(|f| Path::new(id) == f))
+        .flat_map(|(id, doc, occ)| occ.iter().filter(|o| o.declaration && o.name == name && line.is_none_or(|l| o.line == l)).map(move |o| (id, doc, o)))
+        .collect();
+    // A name declared again in the same file and place (a method's
+    // overloads) is one.
+    decls.dedup_by(|a, b| a.0 == b.0 && a.2.line == b.2.line && a.2.col == b.2.col);
+    let (id, doc, target) = match decls.as_slice() {
+        [] => {
+            // The game's own: said so.
+            let game = ws.all_files().find(|(id, _, occ)| ws.is_game(id) && occ.iter().any(|o| o.declaration && o.name == name));
+            if let Some((id, _, _)) = game {
+                let script = Path::new(id).file_name().map_or(id.into(), |n| n.to_string_lossy());
+                return Err(format!("`{name}` is the game's ({script}): it can't be renamed"));
+            }
+            let where_ = file.as_ref().map_or(String::new(), |f| format!(" in {}", relative(&root, &f.to_string_lossy())));
+            return Err(format!("nothing named `{name}` is declared{where_} in the project: only the project's own names can be renamed"));
+        }
+        [one] => *one,
+        many => {
+            let places: Vec<String> = many.iter().map(|(id, _, o)| format!("{}:{} ({:?})", relative(&root, id), o.line, o.kind)).collect();
+            return Err(format!("`{name}` is declared {} times: give `file` (and `line`) of the one meant: {}", many.len(), places.join(", ")));
+        }
+    };
+    let answer = wc3_server::rename::rename(&ws, id, position_of(&doc.text, target), new_name);
+    if !answer.text.is_empty() {
+        return Err(format!("nothing renamed: {}", answer.text));
+    }
+    if answer.locations.is_empty() {
+        return Ok(json!({"renamed": 0, "files": [], "note": "the name is already that"}));
+    }
+
+    // Each file's new text, then its bytes: all made before any is written.
+    let mut by_file: Vec<(String, Vec<wc3_server::document::Range>)> = Vec::new();
+    for l in &answer.locations {
+        match by_file.iter_mut().find(|(f, _)| *f == l.id) {
+            Some((_, ranges)) => ranges.push(l.range),
+            None => by_file.push((l.id.clone(), vec![l.range])),
+        }
+    }
+    let mut writes: Vec<(PathBuf, Vec<u8>)> = Vec::new();
+    let mut report = Vec::new();
+    for (id, mut ranges) in by_file {
+        let (doc, _) = ws.file(&id).ok_or(format!("{id}: not in the project any more"))?;
+        let path = doc.path.clone().ok_or(format!("{id}: a file without a path"))?;
+        let mut new = doc.clone();
+        ranges.sort_by_key(|r| std::cmp::Reverse((r.start.line, r.start.character)));
+        for r in &ranges {
+            new.apply(*r, new_name);
+        }
+        let shown = relative(&root, &path.to_string_lossy());
+        let at: Vec<Value> = ranges.iter().rev().map(|r| json!([r.start.line + 1, r.start.character + 1])).collect();
+        report.push(json!({"file": shown, "count": ranges.len(), "at": at}));
+        let in_map = wc3_server::map::split(&path).is_some();
+        let original = if in_map { wc3_server::map::bytes(&path) } else { std::fs::read(&path).ok() };
+        let bytes = if wc3_server::customtext::is_custom_text_file(&path) {
+            // The custom script is its text form here: back to its bytes.
+            wc3_server::customtext::convert(wc3_server::objects::TO_BYTES, &path.to_string_lossy(), new.text.as_bytes()).map_err(|e| format!("nothing renamed: {shown}: {e}"))?
+        } else {
+            // Text that isn't UTF-8 would come back otherwise.
+            if original.as_deref().is_some_and(|b| std::str::from_utf8(b).is_err()) {
+                return Err(format!("nothing renamed: {shown} isn't UTF-8 text: writing it would change more than the name"));
+            }
+            new.text.into_bytes()
+        };
+        writes.push((path, bytes));
+    }
+    let total: usize = report.iter().filter_map(|r| r["count"].as_u64()).sum::<u64>() as usize;
+    if !dry_run {
+        let mut maps = wc3_server::mapfs::MapFs::default();
+        for (path, bytes) in writes {
+            if wc3_server::map::split(&path).is_some() {
+                maps.write(&path, bytes, false, true).map_err(|e| format!("{}: {e:?} (the files before it are renamed)", path.display()))?;
+            } else {
+                std::fs::write(&path, bytes).map_err(|e| format!("{}: {e} (the files before it are renamed)", path.display()))?;
+            }
+        }
+    }
+    Ok(json!({"renamed": total, "written": !dry_run, "from": name, "to": new_name, "files": report}))
 }
 
 fn build(args: &Value) -> Result<Value, String> {

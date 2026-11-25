@@ -336,6 +336,7 @@ what VS Code shows.
 | tool         | does |
 |--------------|------|
 | `code_check` | every problem of a project's code (JASS, Zinc, Lua, AngelScript): parse errors, lint with the project's `[lint]`, and each JASS name and type checked against the whole project and the game's scripts it runs with (`unknown-name`, `argument-count`, `type-mismatch`, `array-access`, `constant-assignment`), so a problem between files shows; one file's only, errors only, a limit |
+| `jass_rename`  | renames a symbol of a project's code everywhere it means it, as the editor's rename does (the wc3-rs server's `rename`, in process): every file of the project, a map's custom script (`war3map.wct`, written back as its bytes) and scripts inside maps too, scopes and shadowing respected; refused with the reason and nothing written (a native or the game's, declared nowhere, a member of several structs, a bad or taken name, a map that can't be written, a file that isn't UTF-8); `file`/`line` pick a declaration when several have the name; `dry_run` |
 | `jass_build`   | builds JASS files (or a folder's) into one script the game reads, with `wc3-build`: this toolchain's JASS made the game's, `main` and `config` merged, globals and functions sorted (a cycle through `TriggerEvaluate`), locals to the top; with `uglify`, shorter names (everything the game doesn't need as it is renamed `a`, `b` ...); written to `out` or given back; errors with their file and line |
 | `jass_natives` | what the game's scripts declare as a project sees them (`common.j`, `Blizzard.j`, `common.ai` through its `game=` and roots, the last found winning: UjAPI's `common.j` over the game's): natives, functions, globals, each with its declaration, script, line and the comment above it; by a part of the name (the exact name first) or of the comment, by kind or script |
 
@@ -365,9 +366,9 @@ at a time; changes are made to the file as to any text.
 | `txt2_get`     | one part's source, by title (exact, else the first containing it) or by the line it starts at; a heading's part runs to the next heading of its level |
 | `txt2_html`    | the HTML the editor's preview shows: a fragment, or a whole page (`page`), answered or written to `out` |
 
-## Planned: JASS
+## JASS
 
-Partly built. These are the tools, and what the modules underneath are
+Built. These are the tools, and what the modules underneath are
 shaped for (jass-rs, the wc3-rs server):
 
 1. **Check a script**: syntax and semantics, as diagnostics: done
@@ -381,7 +382,9 @@ shaped for (jass-rs, the wc3-rs server):
    `common.j` (UjAPI's, say) has them: done, `jass_natives`.
 4. **Refactor**: rename a symbol everywhere it's used, scopes and
    shadowing taken care of, so the model asks for a rename instead of
-   working out the language's rules itself.
+   working out the language's rules itself: done, `jass_rename` (the
+   editor's rename, by the name and, when several declare it, its file
+   and line).
 
 Two kinds of checking, because the build sorts functions to get around
 JASS calling only functions declared above:
@@ -395,7 +398,7 @@ JASS calling only functions declared above:
   `pure` on in `[lint]`; a tool can ask for either.
 
 The wc3-rs server is a library as well as a binary (`wc3_server`), and
-these tools will use its project model in-process (workspace, symbol
+these tools use its project model in-process (workspace, symbol
 index, rename, analysis), so the editor and the model see the same thing.
 The object data tools already read the game's metadata through it.
 
