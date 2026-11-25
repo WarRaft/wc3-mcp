@@ -68,11 +68,12 @@ pub fn tools() -> Value {
         },
         {
             "name": "w3e_image",
-            "description": "A picture of a map's terrain from above (PNG, north up), as the World Editor's view draws it: each point in its ground texture's colour (with blight, and the cliffs' ground beside cliffs), lit by the slope, under its water by depth, darker on boundaries and past the camera bounds. Textures and the tileset's tables come through `game` and `roots` (by default the project's); a missing one is said.",
+            "description": "A picture of a map's terrain from above (PNG, north up), as the World Editor's view draws it: each point in its ground texture's colour (with blight, and the cliffs' ground beside cliffs), lit by the slope, under its water by depth, darker on boundaries and past the camera bounds. Textures and the tileset's tables come through `game` and `roots` (by default the project's); a missing one is said. `show` marks the regions, the units, the bounds over it.",
             "inputSchema": {"type": "object", "properties": {
                 "path": path,
                 "archive": archive,
                 "scale": {"type": "integer", "minimum": 1, "maximum": 16, "description": "Pixels per point (default: so that the picture is at least 512 pixels across, at most 4096)"},
+                "show": {"type": "array", "items": {"type": "string", "enum": ["regions", "units", "bounds"]}, "description": "What to mark over it, from the map's files beside the terrain: the regions' outlines (war3map.w3r) in their colours, units and items (war3mapUnits.doo) a dot each in the owner's colour, the camera bounds (blue) and the playable area (yellow) (war3map.w3i)"},
                 "game": crate::source::game_schema(),
                 "roots": crate::source::roots_schema(),
                 "project": crate::source::project_schema(),
@@ -144,7 +145,12 @@ fn image(t: &Terrain, args: &Value) -> Result<Value, String> {
         return Err(format!("{} pixels across is too big: at most {MAX_SIDE}", side * scale));
     }
     let (game, errors) = lookup.open();
-    let p = wc3_editor::picture::picture(&game, t, scale);
+    let mut p = wc3_editor::picture::picture(&game, t, scale);
+    let shown = |what: &str| args.get("show").and_then(Value::as_array).is_some_and(|l| l.iter().any(|v| v.as_str() == Some(what)));
+    let marks = wc3_editor::picture::Marks { regions: shown("regions"), units: shown("units"), bounds: shown("bounds") };
+    if marks != wc3_editor::picture::Marks::default() {
+        wc3_editor::picture::mark(&game, t, &mut p, scale, marks);
+    }
     let png = crate::png::encode(p.width, p.height, &p.rgba);
     let mut text = format!(
         "Terrain, {}x{} points, north up, {scale} pixels per point ({}x{}).",

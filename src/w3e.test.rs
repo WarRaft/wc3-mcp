@@ -165,6 +165,9 @@ fn image_of_the_terrain_with_its_textures() {
     // Lgrs isn't in the table: said.
     assert!(text.contains("Lgrs"), "{text}");
     assert_eq!(out["mcp_content"][1]["mimeType"], "image/png");
+    // With the regions marked: the same size.
+    let marked = run("w3e_image", json!({"path": path, "game": [], "roots": [root], "scale": 2, "show": ["regions", "units", "bounds"]})).unwrap();
+    assert_eq!(marked["mcp_content"][0]["text"], out["mcp_content"][0]["text"]);
     // Nothing to draw with: said.
     let none = run("w3e_image", json!({"path": dir.join("nowhere").join("war3map.w3e")}));
     assert!(none.is_err());
