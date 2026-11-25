@@ -67,6 +67,18 @@ pub fn tools() -> Value {
             }},
         },
         {
+            "name": "w3e_image",
+            "description": "A picture of a map's terrain from above (PNG, north up), as the World Editor's view draws it: each point in its ground texture's colour (with blight, and the cliffs' ground beside cliffs), lit by the slope, under its water by depth, darker on boundaries and past the camera bounds. Textures and the tileset's tables come through `game` and `roots` (by default the project's); a missing one is said.",
+            "inputSchema": {"type": "object", "properties": {
+                "path": path,
+                "archive": archive,
+                "scale": {"type": "integer", "minimum": 1, "maximum": 16, "description": "Pixels per point (default: so that the picture is at least 512 pixels across, at most 4096)"},
+                "game": crate::source::game_schema(),
+                "roots": crate::source::roots_schema(),
+                "project": crate::source::project_schema(),
+            }},
+        },
+        {
             "name": "w3e_points",
             "description": "The terrain's points in a region (column x, row y from the bottom left; at most 4096 at once): world position, height (8192 is zero), water, ground texture, flags (ramp, blight, water, boundary, edge), variations, cliff level and texture.",
             "inputSchema": {"type": "object", "properties": points_props, "required": ["x", "y"]},
@@ -96,6 +108,7 @@ pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
             out
         }),
         "w3e_points" => open(args).and_then(|t| points(&t, args)),
+        "w3e_image" => open(args).and_then(|t| image(&t, args)),
         "w3e_set" => set(args),
         _ => return None,
     })
@@ -112,6 +125,38 @@ fn open(args: &Value) -> Result<Terrain, String> {
     };
     let bytes = crate::source::read_bytes(path, archive)?;
     w3e_rs::parse(&bytes).map_err(|e| format!("{path}: {e}"))
+}
+
+/// The longest side `w3e_image` draws, in pixels.
+const MAX_SIDE: u32 = 4096;
+
+fn image(t: &Terrain, args: &Value) -> Result<Value, String> {
+    let lookup = crate::source::lookup(args);
+    if lookup.is_empty() {
+        return Err(format!("No textures to draw it with: {}", crate::source::layers_named(args)));
+    }
+    let side = t.width.max(t.height).max(1);
+    let scale = match args.get("scale").and_then(Value::as_u64) {
+        Some(s) => s.clamp(1, 16) as u32,
+        None => 512u32.div_ceil(side).clamp(1, (MAX_SIDE / side).max(1)),
+    };
+    if side * scale > MAX_SIDE {
+        return Err(format!("{} pixels across is too big: at most {MAX_SIDE}", side * scale));
+    }
+    let (game, errors) = lookup.open();
+    let p = wc3_editor::picture::picture(&game, t, scale);
+    let png = crate::png::encode(p.width, p.height, &p.rgba);
+    let mut text = format!(
+        "Terrain, {}x{} points, north up, {scale} pixels per point ({}x{}).",
+        t.width, t.height, p.width, p.height
+    );
+    for note in errors.iter().chain(&p.notes) {
+        text += &format!("\n{note}");
+    }
+    Ok(json!({"mcp_content": [
+        {"type": "text", "text": text},
+        {"type": "image", "data": crate::png::base64(&png), "mimeType": "image/png"},
+    ]}))
 }
 
 fn info(t: &Terrain) -> Value {

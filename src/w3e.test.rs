@@ -142,3 +142,30 @@ fn errors_say_why() {
         .is_ok()
     );
 }
+
+#[test]
+fn image_of_the_terrain_with_its_textures() {
+    let dir = temp("image");
+    let path = dir.join("war3map.w3e");
+    std::fs::write(&path, terrain().to_bytes().unwrap()).unwrap();
+    // The tables and the texture, a root of its own; a TGA does as a BLP.
+    let root = dir.join("root");
+    std::fs::create_dir_all(root.join("TerrainArt")).unwrap();
+    std::fs::create_dir_all(root.join("T")).unwrap();
+    std::fs::write(root.join("TerrainArt/Terrain.slk"), "ID;P\nC;Y1;X1;K\"tileID\"\nC;X2;K\"dir\"\nC;X3;K\"file\"\nC;Y2;X1;K\"Ldrt\"\nC;X2;K\"T\"\nC;X3;K\"Dirt\"\nE\n").unwrap();
+    let mut tga = vec![0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 4, 0, 32, 0x28];
+    for _ in 0..16 {
+        tga.extend_from_slice(&[0, 200, 0, 255]);
+    }
+    std::fs::write(root.join("T/Dirt.blp"), tga).unwrap();
+    let args = json!({"path": path, "game": [], "roots": [root], "scale": 2});
+    let out = run("w3e_image", args).unwrap();
+    let text = out["mcp_content"][0]["text"].as_str().unwrap();
+    assert!(text.starts_with("Terrain, 4x3 points, north up, 2 pixels per point (8x6)."), "{text}");
+    // Lgrs isn't in the table: said.
+    assert!(text.contains("Lgrs"), "{text}");
+    assert_eq!(out["mcp_content"][1]["mimeType"], "image/png");
+    // Nothing to draw with: said.
+    let none = run("w3e_image", json!({"path": dir.join("nowhere").join("war3map.w3e")}));
+    assert!(none.is_err());
+}
