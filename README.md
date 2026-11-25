@@ -262,7 +262,7 @@ file. A thing's text is the editor's: a `[doodad]` or `[unit]` section.
 
 | tool         | does |
 |--------------|------|
-| `doo_list`   | things placed, filtered by type ids, owner and a rectangle, a page at a time (`offset`, `limit` 200): position, angle, scale; flags and life; owner, hp, mana, level, items, how it's random |
+| `doo_list`   | things placed, filtered by type ids, owner and a rectangle (what stands at a point), a page at a time (`offset`, `limit` 200): position, angle, scale; flags and life; owner, hp, mana, level, items, how it's random; with the game's files (`game`, `roots`, the project's by default), each one's name and model as the World Editor finds them (`wc3_editor::placed::model_of`) |
 | `doo_get`    | the text of some, by index |
 | `doo_set`    | replaces one with a section of text |
 | `doo_new`    | adds sections of text at the end |

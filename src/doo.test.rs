@@ -46,3 +46,24 @@ fn list_get_set_new_delete() {
     assert!(err.starts_with("nothing written:\nline 3: `hp`"), "{err}");
     assert!(run("doo_set", json!({"path": path, "index": 5, "text": "[unit]\n"})).unwrap_err().contains("no index 5"));
 }
+
+#[test]
+fn list_names_and_models_with_the_games_files() {
+    let dir = temp("names");
+    let path = dir.join("war3mapUnits.doo");
+    let units = doo_rs::Units { version: 8, subversion: 11, layout: Layout::Classic, units: vec![doo_rs::Unit::new(doo_rs::Rawcode(*b"hfoo"), 0.0, 0.0, 0)] };
+    std::fs::write(&path, units.to_bytes().unwrap()).unwrap();
+    // The game's tables in a root: the footman's model, its name.
+    let root = dir.join("root");
+    std::fs::create_dir_all(root.join("Units")).unwrap();
+    let slk = "ID;P\nC;Y1;X1;K\"unitUIID\"\nC;X2;K\"file\"\nC;Y2;X1;K\"hfoo\"\nC;X2;K\"units\\human\\Footman\\Footman\"\nE\n";
+    std::fs::write(root.join("Units/UnitUI.slk"), slk).unwrap();
+    std::fs::write(root.join("Units/UnitData.slk"), "ID;P\nC;Y1;X1;K\"unitID\"\nC;Y2;X1;K\"hfoo\"\nE\n").unwrap();
+    std::fs::write(root.join("Units/HumanUnitStrings.txt"), "[hfoo]\nName=Footman\n").unwrap();
+    let l = run("doo_list", json!({"path": path, "game": [], "roots": [root]})).unwrap();
+    assert_eq!(l["things"][0]["model"], "units\\human\\Footman\\Footman.mdx");
+    assert_eq!(l["things"][0]["name"], "Footman");
+    // Without the game's files: neither.
+    let bare = run("doo_list", json!({"path": path})).unwrap();
+    assert!(bare["things"][0].get("model").is_none());
+}

@@ -28,9 +28,10 @@ pub fn tools() -> Value {
     json!([
         {
             "name": "doo_list",
-            "description": "What a map places: war3map.doo (doodads and destructables) or war3mapUnits.doo (units, buildings, items, start locations `sloc`). Each thing with its index (its place in the file), type id, position, angle (radians), scale; doodads with flags (0 invisible, 1 visible non-solid, 2 normal) and life; units with owner (0 = Player 1), hp, mana (-1 default), level, items, abilities, how it's random, number. Filters: `id` (type ids), `player`, a rectangle (left, bottom, right, top). `offset` and `limit` (200) page through.",
+            "description": "What a map places: war3map.doo (doodads and destructables) or war3mapUnits.doo (units, buildings, items, start locations `sloc`). Each thing with its index (its place in the file), type id, position, angle (radians), scale; doodads with flags (0 invisible, 1 visible non-solid, 2 normal) and life; units with owner (0 = Player 1), hp, mana (-1 default), level, items, abilities, how it's random, number. Filters: `id` (type ids), `player`, a rectangle (left, bottom, right, top): what stands at a point. `offset` and `limit` (200) page through. With the game's files (`game`, `roots`, the project's by default), each thing's name and its model's path too, as the World Editor finds them (the game's tables, the map's object data over them).",
             "inputSchema": {"type": "object", "properties": {
                 "path": path, "archive": archive_schema(),
+                "game": crate::source::game_schema(), "roots": crate::source::roots_schema(), "project": crate::source::project_schema(),
                 "id": {"type": "array", "items": {"type": "string"}, "description": "Type ids to keep (hfoo, LTlt ...)"},
                 "player": {"type": "integer", "description": "Units of this owner only (0 = Player 1)"},
                 "left": {"type": "number"}, "bottom": {"type": "number"}, "right": {"type": "number"}, "top": {"type": "number"},
@@ -170,12 +171,27 @@ fn list(f: &Placed, args: &Value) -> Result<Value, String> {
         }
     };
     let matched = items.len();
+    // Names and models, with the game's files.
+    let lookup = crate::source::lookup(args);
+    let known = (!lookup.is_empty()).then(|| {
+        let (game, _) = lookup.open();
+        (wc3_editor::types::Types::load(&game), wc3_server::names::with_objects(&lookup))
+    });
+    let units = matches!(f, Placed::Units(_));
     let page: Vec<Value> = items
         .into_iter()
         .skip(offset)
         .take(limit)
         .map(|(i, mut v)| {
             v["index"] = json!(i);
+            if let Some((types, names)) = &known {
+                let id = v["id"].as_str().unwrap_or_default().to_string();
+                let variation = v["variation"].as_u64().unwrap_or(0) as u32;
+                if let Some(m) = parser_rs::Rawcode::parse(&id).and_then(|code| wc3_editor::placed::model_of(types, code, variation, units)) {
+                    v["name"] = json!(names.objects.get(m.kind, &id).map(|n| n.shown()));
+                    v["model"] = json!(m.paths.as_ref().and_then(|p| p.first()));
+                }
+            }
             v
         })
         .collect();
