@@ -32,7 +32,7 @@ pub fn tools() -> Value {
         },
         {
             "name": "project_build",
-            "description": "Builds a project's map (a [build] of its wc3.bni: `out=` where, `build/<name>.w3x` by default; `uglify=1` short names): the map's files from its roots (the last that has a file wins; patches, .trg files, the project's code and wc3.bni left out), and war3map.j made anew of the map's files, its triggers (the project's .trg files, else the roots' war3map.wtg), the map's custom script (war3map.wct) and the project's code (vJASS, Zinc). When the first root is a map, the map built is a copy of it with the rest written in (a protected map's unnamed files stay). Gives where it was written, how many files, the script's lines; or every error, with its file and line, and nothing written.",
+            "description": "Builds a project's map (a [build] of its wc3.bni: `out=` where, `build/<name>.w3x` by default; `uglify=1` short names; `optimize=1` inlining and dead code left out): the map's files from its roots (the last that has a file wins; patches, .trg files, the project's code and wc3.bni left out), and war3map.j made anew of the map's files, its triggers (the project's .trg files, else the roots' war3map.wtg), the map's custom script (war3map.wct) and the project's code (vJASS, Zinc). When the first root is a map, the map built is a copy of it with the rest written in (a protected map's unnamed files stay). Gives where it was written, how many files, the script's lines; or every error, with its file and line, and nothing written.",
             "inputSchema": {"type": "object", "properties": {
                 "path": {"type": "string", "description": "The project's wc3.bni, or any file or folder in it"},
                 "name": {"type": "string", "description": "The [build]'s name; the first one when left out"},
@@ -102,7 +102,7 @@ fn info(args: &Value) -> Result<Value, String> {
         "roots": project.roots.iter().map(|p| place(p)).collect::<Vec<_>>(),
         "sources": project.sources.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
         "exclude": project.exclude.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
-        "builds": project.builds.iter().map(|b| serde_json::json!({"name": b.name, "out": b.out(&project), "script": b.script.extension(), "uglify": b.uglify})).collect::<Vec<_>>(),
+        "builds": project.builds.iter().map(|b| serde_json::json!({"name": b.name, "out": b.out(&project), "script": b.script.extension(), "uglify": b.uglify, "optimize": b.optimize})).collect::<Vec<_>>(),
         "jass_dialect": project.jass_dialect.map(|d| format!("{d:?}").to_lowercase()),
         "lint": lint,
         "problems": issues(&problems),
