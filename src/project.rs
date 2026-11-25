@@ -142,7 +142,7 @@ mod tests;
 fn build(args: &Value) -> Result<Value, String> {
     let at = PathBuf::from(arg_str(args, "path")?);
     match wc3_server::build::build_at(&at, args.get("name").and_then(Value::as_str)) {
-        Ok(b) => Ok(json!({"build": b.name, "out": b.out, "base": b.base, "files": b.files, "triggers": b.triggers, "script": b.script, "script_lines": b.script_lines, "notes": b.notes})),
+        Ok(b) => Ok(json!({"build": b.name, "out": b.out, "base": b.base, "files": b.files, "triggers": b.triggers, "script": b.script, "script_lines": b.script_lines, "notes": b.notes, "errors": b.errors})),
         Err(errors) => Ok(json!({"errors": errors})),
     }
 }

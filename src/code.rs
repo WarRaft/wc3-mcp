@@ -144,7 +144,7 @@ fn build(args: &Value) -> Result<Value, String> {
             let errors: Vec<Value> = errors.iter().map(|e| json!({"file": e.origin.file, "line": e.origin.line, "message": e.message})).collect();
             Ok(json!({"built": false, "errors": errors}))
         }
-        Ok(wc3_build::jass::Built { script, notes }) => match args.get("out").and_then(Value::as_str) {
+        Ok(wc3_build::jass::Built { script, notes, .. }) => match args.get("out").and_then(Value::as_str) {
             Some(out) => {
                 std::fs::write(out, &script).map_err(|e| format!("{out}: {e}"))?;
                 Ok(json!({"built": true, "files": paths.len(), "lines": script.lines().count(), "bytes": script.len(), "notes": notes, "out": out}))

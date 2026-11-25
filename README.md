@@ -325,7 +325,7 @@ A project's settings, its `wc3.bni` (see the wc3-rs README, "Projects").
 |-----------------|------|
 | `project_info`  | the settings of the project a file or folder is in: game folders and roots (each a folder, a map or missing), sources, exclusions, builds, dialect, lint, the settings' problems, the text; and where the editor's files (`UI\TriggerData.txt` ...) and their patches come from |
 | `project_write` | writes a `wc3.bni` (made if missing) after reading it as the editor does: errors with their lines and nothing written, warnings with what was written |
-| `project_build` | builds a project's map, a `[build]` of its `wc3.bni` (see wc3-rs's README, "Building a map"): the roots' files and `war3map.j` made anew; where it went, or every error and nothing written |
+| `project_build` | builds a project's map, a `[build]` of its `wc3.bni` (see wc3-rs's README, "Building a map"): the roots' files and `war3map.j` made anew; where it went, or every error and nothing written; written with `errors` when its script has some that don't stop it (AngelScript's `ExecuteFunc` of a name that can't be worked out) |
 
 ### Code
 
