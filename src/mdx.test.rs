@@ -21,7 +21,7 @@ fn model() -> Vec<u8> {
             Chunk::Sequences(vec![stand]),
             Chunk::Textures(vec![Texture { replaceable_id: 11, path: Fixed::new("", 260), flags: 0 }]),
             Chunk::Geosets(vec![g]),
-            Chunk::Other { tag: *b"BONE", data: vec![0; 8] },
+            Chunk::Other { tag: *b"ATCH", data: vec![0; 8] },
         ],
     }
     .to_bytes()
@@ -37,7 +37,8 @@ fn what_a_model_has_from_disk_or_through_the_roots() {
     assert_eq!(on_disk["geosets"][0]["triangles"], 1);
     assert_eq!(on_disk["textures"][0]["replaceable_id"], 11);
     assert_eq!(on_disk["sequences"][0]["name"], "Stand");
-    assert_eq!(on_disk["other_chunks"][0]["chunk"], "BONE");
+    assert_eq!(on_disk["other_chunks"][0]["chunk"], "ATCH");
+    assert_eq!(on_disk["nodes"], json!([]));
     // By the game's name, through a root.
     let looked_up = call("mdx_info", &json!({"path": "Doodads\\Cliff.mdx", "game": [], "roots": [dir]})).unwrap().unwrap();
     assert_eq!(looked_up, on_disk);

@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 pub fn tools() -> Value {
     json!([{
         "name": "mdx_info",
-        "description": "What's in a model (.mdx): version, name, extent; its geosets (vertices, triangles, material, texture coordinate sets, extent), materials and their layers (filter mode, texture, alpha), textures (path, or the game's replaceable one by id: 1 team colour, 2 team glow, 11 cliff ...), sequences (name, frames, looping), and its other chunks with their sizes. Read from disk, from inside an archive or map, or through the game's files.",
+        "description": "What's in a model (.mdx): version, name, extent; its geosets (vertices, triangles, material, texture coordinate sets, extent), materials and their layers (filter mode, texture, alpha), textures (path, or the game's replaceable one by id: 1 team colour, 2 team glow, 11 cliff ...), sequences (name, frames, looping), its skeleton (bones and helpers: parent, the tracks that move each), and its other chunks with their sizes. Read from disk, from inside an archive or map, or through the game's files.",
         "inputSchema": {"type": "object", "properties": {
             "path": {"type": "string", "description": "The model: a .mdx on disk, its name inside `archive`, or its name in the game's files (Units\\Human\\Footman\\Footman.mdx)"},
             "archive": {"type": "string", "description": "An MPQ archive or a map (.mpq, .w3x, .w3m) to read `path` from"},
@@ -100,6 +100,18 @@ fn info(args: &Value) -> Result<Value, String> {
         "textures": textures,
         "sequences": sequences,
         "global_sequences": m.global_sequences(),
+        // The skeleton: each node, its parent and which tracks move it.
+        "nodes": m.bones().iter().map(|b| (&b.node, "bone")).chain(m.helpers().iter().map(|h| (h, "helper"))).map(|(n, kind)| json!({
+            "kind": kind,
+            "name": n.name.text(),
+            "id": n.object_id,
+            "parent": n.parent(),
+            "tracks": n.tracks.iter().map(|t| match t {
+                mdx_rs::NodeTrack::Translation(t) => format!("translation ({} keys)", t.keys.len()),
+                mdx_rs::NodeTrack::Rotation(t) => format!("rotation ({} keys)", t.keys.len()),
+                mdx_rs::NodeTrack::Scaling(t) => format!("scaling ({} keys)", t.keys.len()),
+            }).collect::<Vec<_>>(),
+        })).collect::<Vec<_>>(),
         "pivots": m.pivots().len(),
         "other_chunks": others,
     }))
