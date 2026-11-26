@@ -220,6 +220,7 @@ per step.
 |--------------|------|
 | `w3e_info`   | version, base tileset (its name from the game's files with `game` and `roots`), the ground and cliff textures with how many points use each, the size, the world bounds |
 | `w3e_image`  | a picture from above (PNG, north up) as the World Editor's view draws it (`wc3_editor::picture`): each point in its ground texture's colour (blight, a cliff's ground beside it), lit by the slope, under its water by depth, darker on boundaries; textures and tables through `game` and `roots` (the project's by default); `show` marks the regions, units (owners' colours) and bounds over it |
+| `w3e_brush`  | lays one of the World Editor's terrain brushes (`wc3_editor::edit`, the same code) on a `war3map.w3e` on disk: raise, lower, plateau, smooth, texture (added to the list), cliff up and down, water, dry; a circle `size` cells across at a point, `steps` times |
 | `w3e_points` | the points of a region (4096 at most): world position, height (and from zero), water, texture (index and rawcode), ramp, blight, water, boundary, edge, variations, cliff level and texture |
 | `w3e_set`    | sets fields on every point of a region; a texture by index or rawcode from the ground list; values are checked against the file first |
 

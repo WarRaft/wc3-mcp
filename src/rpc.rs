@@ -70,7 +70,7 @@ fn initialize(params: &Value) -> Value {
             (war3map.wts): wts_list, wts_get, wts_resolve, wts_lint, and wts_set to change one. \
             Cameras (war3map.w3c): w3c_list, and w3c_set, w3c_new, w3c_delete; the layout \
             (1.31 added a local rotation) comes from the map's war3map.w3i, else 1.27a's. \
-            Terrain (war3map.w3e): w3e_info for tilesets and size, w3e_image for a picture from above (PNG), w3e_points for a region \
+            Terrain (war3map.w3e): w3e_info for tilesets and size, w3e_image for a picture from above (PNG), w3e_brush to lay the editor's terrain brushes, w3e_points for a region \
             of the grid (column, row from the bottom left), w3e_set to change one. \
             Map info (war3map.w3i: name, description, players, forces, tech tree, random tables): \
             w3i_text gives it as text, w3i_write writes that text back after checking it. \

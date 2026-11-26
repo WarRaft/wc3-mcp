@@ -172,3 +172,19 @@ fn image_of_the_terrain_with_its_textures() {
     let none = run("w3e_image", json!({"path": dir.join("nowhere").join("war3map.w3e")}));
     assert!(none.is_err());
 }
+
+#[test]
+fn brushes_on_the_file() {
+    let dir = temp("brush");
+    let path = dir.join("war3map.w3e");
+    std::fs::write(&path, terrain().to_bytes().unwrap()).unwrap();
+    // Raise twice at (-128, -128): point (1, 1).
+    let out = run("w3e_brush", json!({"path": path, "tool": "raise", "x": -128.0, "y": -128.0, "size": 2, "strength": 1, "steps": 2})).unwrap();
+    assert_eq!(out["point"], json!([1.0, 1.0]));
+    let t = w3e_rs::parse(&std::fs::read(&path).unwrap()).unwrap();
+    assert_eq!(t.point(1, 1).unwrap().height, ZERO_HEIGHT + 1024);
+    // A texture the list hasn't: added.
+    let out = run("w3e_brush", json!({"path": path, "tool": "texture", "texture": "Lgrd", "x": -128.0, "y": -128.0})).unwrap();
+    assert_eq!(out["ground"], json!(["Ldrt", "Lgrs", "Lgrd"]));
+    assert!(run("w3e_brush", json!({"path": path, "tool": "raise", "x": 9999.0, "y": 0.0})).unwrap_err().contains("off the terrain"));
+}

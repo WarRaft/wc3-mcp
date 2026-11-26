@@ -80,6 +80,20 @@ pub fn tools() -> Value {
             }},
         },
         {
+            "name": "w3e_brush",
+            "description": "Lays one of the World Editor's terrain brushes on a war3map.w3e on disk, as the editor's palette does (the same code): a circle `size` cells (128 units) across around the point x, y (the game's units). Tools: raise, lower (most in the middle, `strength` layers), plateau (to the height at the point), smooth (toward the neighbours' average, `strength` 0-1), texture (the ground tile `texture`, added to the terrain's list if it isn't there), cliff_up, cliff_down (the cliff layer one up or down from the point's, in cliff texture `cliff`), water, dry. `steps` lays it that many times.",
+            "inputSchema": {"type": "object", "properties": {
+                "path": {"type": "string", "description": "The war3map.w3e on disk"},
+                "tool": {"type": "string", "enum": ["raise", "lower", "plateau", "smooth", "texture", "cliff_up", "cliff_down", "water", "dry"]},
+                "x": {"type": "number"}, "y": {"type": "number"},
+                "size": {"type": "number", "minimum": 1, "description": "Across, in cells (default 4)"},
+                "strength": {"type": "number", "minimum": 0, "description": "Layers a step (raise, lower), or 0-1 (smooth); default 0.25"},
+                "texture": {"type": "string", "description": "The ground tile id (Lgrs)"},
+                "cliff": {"type": "integer", "description": "The cliff texture: an index into the terrain's cliff list (-1 keeps each point's)"},
+                "steps": {"type": "integer", "minimum": 1, "maximum": 100},
+            }, "required": ["path", "tool", "x", "y"]},
+        },
+        {
             "name": "w3e_points",
             "description": "The terrain's points in a region (column x, row y from the bottom left; at most 4096 at once): world position, height (8192 is zero), water, ground texture, flags (ramp, blight, water, boundary, edge), variations, cliff level and texture.",
             "inputSchema": {"type": "object", "properties": points_props, "required": ["x", "y"]},
@@ -110,6 +124,7 @@ pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
         }),
         "w3e_points" => open(args).and_then(|t| points(&t, args)),
         "w3e_image" => open(args).and_then(|t| image(&t, args)),
+        "w3e_brush" => brush(args),
         "w3e_set" => set(args),
         _ => return None,
     })
@@ -126,6 +141,49 @@ fn open(args: &Value) -> Result<Terrain, String> {
     };
     let bytes = crate::source::read_bytes(path, archive)?;
     w3e_rs::parse(&bytes).map_err(|e| format!("{path}: {e}"))
+}
+
+fn brush(args: &Value) -> Result<Value, String> {
+    use wc3_editor::edit::{Brush, Edits, Tool};
+    let path = crate::source::arg_str(args, "path")?;
+    let tool = match crate::source::arg_str(args, "tool")? {
+        "raise" => Tool::Raise,
+        "lower" => Tool::Lower,
+        "plateau" => Tool::Plateau,
+        "smooth" => Tool::Smooth,
+        "texture" => Tool::Texture,
+        "cliff_up" => Tool::CliffUp,
+        "cliff_down" => Tool::CliffDown,
+        "water" => Tool::Water,
+        "dry" => Tool::Dry,
+        other => return Err(format!("no tool {other}")),
+    };
+    let number = |k: &str| args.get(k).and_then(Value::as_f64).map(|v| v as f32);
+    let (x, y) = (number("x").ok_or("`x` is missing")?, number("y").ok_or("`y` is missing")?);
+    let texture = args.get("texture").and_then(Value::as_str);
+    let texture = match texture {
+        Some(t) => Some(w3e_rs::Rawcode::parse(t).ok_or(format!("{t} isn't a tile id"))?),
+        None => None,
+    };
+    let brush = Brush {
+        tool,
+        size: number("size").unwrap_or(4.0),
+        strength: number("strength").unwrap_or(0.25),
+        texture,
+        cliff: args.get("cliff").and_then(Value::as_i64).unwrap_or(-1) as i32,
+    };
+    let mut t = w3e_rs::parse(&crate::source::read_bytes(path, None)?).map_err(|e| format!("{path}: {e}"))?;
+    let (cx, cy) = ((x - t.offset_x) / w3e_rs::CELL, (y - t.offset_y) / w3e_rs::CELL);
+    if cx < 0.0 || cy < 0.0 || cx > t.width as f32 - 1.0 || cy > t.height as f32 - 1.0 {
+        return Err(format!("({x}, {y}) is off the terrain"));
+    }
+    let mut edits = Edits::default();
+    let steps = args.get("steps").and_then(Value::as_u64).unwrap_or(1).clamp(1, 100);
+    for i in 0..steps {
+        edits.apply(&mut t, cx, cy, &brush, i == 0)?;
+    }
+    crate::source::write(path, t.to_bytes().map_err(|e| format!("nothing written: {e}"))?)?;
+    Ok(json!({"written": path, "point": [cx, cy], "steps": steps, "ground": t.ground.iter().map(|g| g.to_string()).collect::<Vec<_>>()}))
 }
 
 /// The longest side `w3e_image` draws, in pixels.
