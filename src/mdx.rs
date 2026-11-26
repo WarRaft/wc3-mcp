@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 pub fn tools() -> Value {
     json!([{
         "name": "mdx_info",
-        "description": "What's in a model (.mdx): version, name, extent; its geosets (vertices, triangles, material, texture coordinate sets, extent), materials and their layers (filter mode, texture, alpha), textures (path, or the game's replaceable one by id: 1 team colour, 2 team glow, 11 cliff ...), sequences (name, frames, looping), its skeleton (bones and helpers: parent, the tracks that move each), and its other chunks with their sizes. Read from disk, from inside an archive or map, or through the game's files.",
+        "description": "What's in a model (.mdx): version, name, extent; its geosets (vertices, triangles, material, texture coordinate sets, extent), materials and their layers (filter mode, texture, alpha), textures (path, or the game's replaceable one by id: 1 team colour, 2 team glow, 11 cliff ...), sequences (name, frames, looping), its skeleton (bones and helpers: parent, the tracks that move each), its particle emitters (texture, rate, life, speed), and its other chunks with their sizes. Read from disk, from inside an archive or map, or through the game's files.",
         "inputSchema": {"type": "object", "properties": {
             "path": {"type": "string", "description": "The model: a .mdx on disk, its name inside `archive`, or its name in the game's files (Units\\Human\\Footman\\Footman.mdx)"},
             "archive": {"type": "string", "description": "An MPQ archive or a map (.mpq, .w3x, .w3m) to read `path` from"},
@@ -100,6 +100,14 @@ fn info(args: &Value) -> Result<Value, String> {
         "textures": textures,
         "sequences": sequences,
         "global_sequences": m.global_sequences(),
+        "particle_emitters": m.emitters2().iter().map(|e| json!({
+            "name": e.node.name.text(),
+            "texture": e.texture_id,
+            "emission_rate": e.emission_rate,
+            "life_span": e.life_span,
+            "speed": e.speed,
+            "filter_mode": e.filter_mode,
+        })).collect::<Vec<_>>(),
         // The skeleton: each node, its parent and which tracks move it.
         "nodes": m.bones().iter().map(|b| (&b.node, "bone")).chain(m.helpers().iter().map(|h| (h, "helper"))).map(|(n, kind)| json!({
             "kind": kind,
