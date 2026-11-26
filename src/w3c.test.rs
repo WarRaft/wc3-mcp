@@ -84,3 +84,21 @@ fn layout_from_the_w3i_next_to_it() {
     let err = run("w3c_list", json!({"path": path, "w3i_version": 25})).unwrap_err();
     assert!(err.contains("Reign of Chaos to 1.30"), "{err}");
 }
+
+#[test]
+fn reforged_2_0_version_3() {
+    let dir = temp("reforged");
+    let path = dir.join("war3map.w3c");
+    std::fs::write(dir.join("war3map.w3i"), 39u32.to_le_bytes()).unwrap();
+    let added = run("w3c_new", json!({"path": path, "values": {"depth_of_field": 900.0, "free": 1}})).unwrap();
+    assert_eq!((added["added"]["depth_of_field"].clone(), added["added"]["free"].clone()), (json!(900.0), json!(1)));
+    // Version 3: 16 numbers, the name, `free`.
+    assert_eq!(std::fs::read(&path).unwrap().len(), 8 + 64 + "Camera 001".len() + 1 + 4);
+    let list = run("w3c_list", json!({"path": path})).unwrap();
+    assert_eq!((list["version"].clone(), list["cameras"][0]["free"].clone()), (json!(3), json!(1)));
+    // A version 0 file has none of them.
+    let old = dir.join("old.w3c");
+    run("w3c_new", json!({"path": old, "w3i_version": 31, "values": {}})).unwrap();
+    let err = run("w3c_set", json!({"path": old, "w3i_version": 31, "camera": 0, "values": {"free": 1}})).unwrap_err();
+    assert!(err.contains("version 3 (Reforged 2.0)"), "{err}");
+}
