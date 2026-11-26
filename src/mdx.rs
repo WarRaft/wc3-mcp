@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 pub fn tools() -> Value {
     json!([{
         "name": "mdx_info",
-        "description": "What's in a model (.mdx): version, name, extent; its geosets (vertices, triangles, material, texture coordinate sets, extent), materials and their layers (filter mode, texture, alpha), textures (path, or the game's replaceable one by id: 1 team colour, 2 team glow, 11 cliff ...), sequences (name, frames, looping), its skeleton (bones and helpers: parent, the tracks that move each), its particle emitters (texture, rate, life, speed), its lights (the day and night models' sun), and its other chunks with their sizes. Read from disk, from inside an archive or map, or through the game's files.",
+        "description": "What's in a model (.mdx): version, name, extent; its geosets (vertices, triangles, material, texture coordinate sets, extent), materials and their layers (filter mode, texture, alpha), textures (path, or the game's replaceable one by id: 1 team colour, 2 team glow, 11 cliff ...), sequences (name, frames, looping), its skeleton (bones and helpers: parent, the tracks that move each), its particle emitters (texture, rate, life, speed), its lights (the day and night models' sun), its ribbons, and its other chunks with their sizes. Read from disk, from inside an archive or map, or through the game's files.",
         "inputSchema": {"type": "object", "properties": {
             "path": {"type": "string", "description": "The model: a .mdx on disk, its name inside `archive`, or its name in the game's files (Units\\Human\\Footman\\Footman.mdx)"},
             "archive": {"type": "string", "description": "An MPQ archive or a map (.mpq, .w3x, .w3m) to read `path` from"},
@@ -113,6 +113,18 @@ fn info(args: &Value) -> Result<Value, String> {
             "ambient_color_bgr": l.ambient_color,
             "ambient_intensity": l.ambient_intensity,
             "tracks": l.tracks.iter().map(|(t, _)| String::from_utf8_lossy(t).into_owned()).collect::<Vec<_>>(),
+        })).collect::<Vec<_>>(),
+        "ribbons": m.ribbons().iter().map(|r| json!({
+            "name": r.node.name.text(),
+            "color": r.color,
+            "alpha": r.alpha,
+            "height_above": r.height_above,
+            "height_below": r.height_below,
+            "life_span": r.life_span,
+            "emission_rate": r.emission_rate,
+            "material": r.material_id,
+            "gravity": r.gravity,
+            "tracks": r.tracks.iter().map(|(t, _)| String::from_utf8_lossy(t).into_owned()).collect::<Vec<_>>(),
         })).collect::<Vec<_>>(),
         "particle_emitters": m.emitters2().iter().map(|e| json!({
             "name": e.node.name.text(),

@@ -378,7 +378,7 @@ files (through `game` and `roots`, the project's by default).
 
 | tool       | does |
 |------------|------|
-| `mdx_info` | version, name, extent; geosets (vertices, triangles, material, texture coordinate sets), materials and their layers (filter mode, texture, alpha), textures (a path, or the game's replaceable one: 1 team colour, 2 team glow, 11 cliff ...), sequences (frames, looping), the skeleton (bones and helpers, each one's parent and tracks), the particle emitters, the lights, the other chunks and their sizes |
+| `mdx_info` | version, name, extent; geosets (vertices, triangles, material, texture coordinate sets), materials and their layers (filter mode, texture, alpha), textures (a path, or the game's replaceable one: 1 team colour, 2 team glow, 11 cliff ...), sequences (frames, looping), the skeleton (bones and helpers, each one's parent and tracks), the particle emitters, the ribbons, the lights, the other chunks and their sizes |
 
 ## JASS
 
