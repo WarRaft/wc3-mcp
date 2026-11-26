@@ -171,6 +171,7 @@ fn brush(args: &Value) -> Result<Value, String> {
         strength: number("strength").unwrap_or(0.25),
         texture,
         cliff: args.get("cliff").and_then(Value::as_i64).unwrap_or(-1) as i32,
+        flags: 0,
     };
     let mut t = w3e_rs::parse(&crate::source::read_bytes(path, None)?).map_err(|e| format!("{path}: {e}"))?;
     let (cx, cy) = ((x - t.offset_x) / w3e_rs::CELL, (y - t.offset_y) / w3e_rs::CELL);
