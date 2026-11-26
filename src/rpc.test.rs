@@ -21,7 +21,7 @@ fn initialize_and_list() {
             .map(|t| t["name"].as_str().unwrap().to_string())
             .collect();
     let want = "slk_info slk_read slk_get slk_set slk_lint \
-                mpq_info mpq_list mpq_read mpq_extract mpq_verify mpq_create mpq_add mpq_remove mpq_rename \
+                mpq_info mpq_list mpq_read mpq_extract mpq_verify mpq_create mpq_add mpq_remove mpq_rename casc_list casc_read \
                 obj_list obj_get obj_text obj_check obj_set obj_new obj_delete \
                 wts_list wts_get wts_resolve wts_set wts_lint \
                 w3c_list w3c_set w3c_new w3c_delete \

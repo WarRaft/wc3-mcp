@@ -7,6 +7,7 @@
 //! A library as well as the `wc3-mcp` binary: the extension's `wc3` runs
 //! it as `wc3 mcp` ([`run`]).
 
+mod casc;
 mod code;
 mod imp;
 mod mdx;

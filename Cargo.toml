@@ -45,5 +45,6 @@ wc3-build = { path = "../wc3-build" }
 # The World Editor's terrain work, for pictures of a terrain (w3e_image).
 wc3-editor = { path = "../wc3-rs/editor" }
 mdx-rs = { path = "../mdx-rs" }
+casc-rs = { path = "../casc-rs" }
 # Keys in insertion order: a row's columns stay in the table's order.
 serde_json = { version = "1.0.145", features = ["preserve_order"] }

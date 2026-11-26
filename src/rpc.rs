@@ -61,7 +61,7 @@ fn initialize(params: &Value) -> Value {
             from inside an MPQ archive or a map (archive=...). MPQ archives and maps \
             (.mpq, .w3x, .w3m): mpq_info, mpq_list (masks like Units\\*.slk), mpq_read \
             (text, or hex for binary), mpq_extract to a folder, mpq_verify; and to change \
-            them mpq_create, mpq_add, mpq_remove, mpq_rename. An archive without a \
+            them mpq_create, mpq_add, mpq_remove, mpq_rename. A Reforged install's CASC storage (the folder with .build.info): casc_list names its files (War3.w3mod:..., the HD ones War3.w3mod:_HD.w3mod:...), casc_read gives one. An archive without a \
             (listfile) needs names from listfiles=[...] to find its files. Object data \
             (war3map.w3a abilities, .w3b, .w3d, .w3h, .w3q, .w3t items, .w3u units): \
             obj_list, obj_get, obj_text, obj_check, and to change them obj_set, obj_new, \
@@ -102,6 +102,7 @@ fn call(params: &Value) -> Value {
     let name = params.get("name").and_then(Value::as_str).unwrap_or("");
     let args = params.get("arguments").cloned().unwrap_or(json!({}));
     let answer = crate::mpq::call(name, &args)
+        .or_else(|| crate::casc::call(name, &args))
         .or_else(|| crate::obj::call(name, &args))
         .or_else(|| crate::wts::call(name, &args))
         .or_else(|| crate::w3c::call(name, &args))
@@ -146,6 +147,7 @@ fn call(params: &Value) -> Value {
 fn tools() -> Value {
     let mut all = crate::slk::tools().as_array().cloned().unwrap_or_default();
     all.extend(crate::mpq::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::casc::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::obj::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::wts::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::w3c::tools().as_array().cloned().unwrap_or_default());

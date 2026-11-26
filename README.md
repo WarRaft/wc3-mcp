@@ -77,6 +77,8 @@ game's own list, say).
 | `mpq_add`     | adds or replaces a file, from a file on disk (`file`) or text (`text`) |
 | `mpq_remove`  | removes files by name |
 | `mpq_rename`  | renames a file |
+| `casc_list`   | the files of a Reforged install's CASC storage (`casc-rs`) by their root's names (`War3.w3mod:...`, the HD ones `War3.w3mod:_HD.w3mod:...`), whether each is on disk; filtered, paged |
+| `casc_read`   | one of them: text, or its size and first bytes' hex, or written to a file |
 
 A SLK table inside an archive is read with the `slk_*` tools and `archive`.
 
