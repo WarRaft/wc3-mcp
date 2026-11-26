@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 pub fn tools() -> Value {
     json!([{
         "name": "mdx_info",
-        "description": "What's in a model (.mdx): version, name, extent; its geosets (vertices, triangles, material, texture coordinate sets, extent), materials and their layers (filter mode, texture, alpha), textures (path, or the game's replaceable one by id: 1 team colour, 2 team glow, 11 cliff ...), sequences (name, frames, looping), its skeleton (bones and helpers: parent, the tracks that move each), its particle emitters (texture, rate, life, speed), and its other chunks with their sizes. Read from disk, from inside an archive or map, or through the game's files.",
+        "description": "What's in a model (.mdx): version, name, extent; its geosets (vertices, triangles, material, texture coordinate sets, extent), materials and their layers (filter mode, texture, alpha), textures (path, or the game's replaceable one by id: 1 team colour, 2 team glow, 11 cliff ...), sequences (name, frames, looping), its skeleton (bones and helpers: parent, the tracks that move each), its particle emitters (texture, rate, life, speed), its lights (the day and night models' sun), and its other chunks with their sizes. Read from disk, from inside an archive or map, or through the game's files.",
         "inputSchema": {"type": "object", "properties": {
             "path": {"type": "string", "description": "The model: a .mdx on disk, its name inside `archive`, or its name in the game's files (Units\\Human\\Footman\\Footman.mdx)"},
             "archive": {"type": "string", "description": "An MPQ archive or a map (.mpq, .w3x, .w3m) to read `path` from"},
@@ -37,6 +37,11 @@ fn read(args: &Value) -> Result<Vec<u8>, String> {
     game.read(path)
         .map(|(bytes, _)| bytes)
         .ok_or_else(|| format!("{path}: not on disk, nor in {}", crate::source::layers_named(args)))
+}
+
+/// A light's kind by its number.
+fn light_kind(kind: u32) -> &'static str {
+    ["omni", "directional", "ambient"].get(kind as usize).copied().unwrap_or("other")
 }
 
 fn extent(e: &mdx_rs::Extent) -> Value {
@@ -100,6 +105,15 @@ fn info(args: &Value) -> Result<Value, String> {
         "textures": textures,
         "sequences": sequences,
         "global_sequences": m.global_sequences(),
+        "lights": m.lights().iter().map(|l| json!({
+            "name": l.node.name.text(),
+            "kind": light_kind(l.kind),
+            "color_bgr": l.color,
+            "intensity": l.intensity,
+            "ambient_color_bgr": l.ambient_color,
+            "ambient_intensity": l.ambient_intensity,
+            "tracks": l.tracks.iter().map(|(t, _)| String::from_utf8_lossy(t).into_owned()).collect::<Vec<_>>(),
+        })).collect::<Vec<_>>(),
         "particle_emitters": m.emitters2().iter().map(|e| json!({
             "name": e.node.name.text(),
             "texture": e.texture_id,
