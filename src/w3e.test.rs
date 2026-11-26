@@ -188,3 +188,48 @@ fn brushes_on_the_file() {
     assert_eq!(out["ground"], json!(["Ldrt", "Lgrs", "Lgrd"]));
     assert!(run("w3e_brush", json!({"path": path, "tool": "raise", "x": 9999.0, "y": 0.0})).unwrap_err().contains("off the terrain"));
 }
+
+/// A SLK table of `rows` (the first its column names).
+fn slk(rows: &[&[&str]]) -> String {
+    let mut out = String::from("ID;PWXL;N;E\n");
+    for (y, row) in rows.iter().enumerate() {
+        for (x, cell) in row.iter().enumerate() {
+            out += &format!("C;Y{};X{};K\"{cell}\"\n", y + 1, x + 1);
+        }
+    }
+    out + "E\n"
+}
+
+#[test]
+fn the_tile_setter_on_the_file() {
+    let dir = temp("tiles");
+    let path = dir.join("war3map.w3e");
+    std::fs::write(&path, terrain().to_bytes().unwrap()).unwrap();
+    let tables = dir.join("tables");
+    std::fs::create_dir_all(tables.join("TerrainArt")).unwrap();
+    std::fs::write(tables.join("TerrainArt/Terrain.slk"), slk(&[&["tileID", "dir", "file"], &["Ldrt", "T", "D"], &["Lgrs", "T", "G"], &["Lrok", "T", "R"]])).unwrap();
+    std::fs::write(tables.join("TerrainArt/CliffTypes.slk"), slk(&[&["cliffID", "groundTile"], &["CLdi", "Ldrt"]])).unwrap();
+    let roots = json!([tables]);
+    // Grass out (to rock, the default: the first), rock in.
+    let out = run("w3e_tiles", json!({"path": path, "tiles": ["Lrok", "Ldrt"], "game": [], "roots": roots})).unwrap();
+    assert_eq!((out["ground"].clone(), out["cliffs"].clone()), (json!(["Lrok", "Ldrt"]), json!(["CLdi"])));
+    assert!(run("w3e_tiles", json!({"path": path, "tiles": ["Nope"], "game": [], "roots": roots})).unwrap_err().contains("Terrain.slk"));
+}
+
+#[test]
+fn a_projects_map_resized() {
+    let dir = temp("resize");
+    std::fs::write(dir.join("wc3.bni"), "[map]\nroot=map\n").unwrap();
+    std::fs::create_dir_all(dir.join("map")).unwrap();
+    let mut t = terrain();
+    t.width = 33;
+    t.height = 33;
+    t.points = vec![t.points[0]; 33 * 33];
+    std::fs::write(dir.join("map/war3map.w3e"), t.to_bytes().unwrap()).unwrap();
+    let out = run("map_resize", json!({"project": dir, "right": 8, "margins": [1, 1, 1, 1]})).unwrap();
+    assert_eq!((out["width"].clone(), out["height"].clone()), (json!(40), json!(32)));
+    let back = w3e_rs::parse(&std::fs::read(dir.join("map/war3map.w3e")).unwrap()).unwrap();
+    assert_eq!(back.width, 41);
+    assert!(back.point(0, 5).unwrap().edge() && !back.point(1, 5).unwrap().edge());
+    assert!(run("map_resize", json!({"project": dir, "left": -20})).unwrap_err().contains("32 to 480"));
+}

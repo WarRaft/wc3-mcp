@@ -94,6 +94,26 @@ pub fn tools() -> Value {
             }, "required": ["path", "tool", "x", "y"]},
         },
         {
+            "name": "w3e_tiles",
+            "description": "The tile setter (World Editor's Modify Tileset), on a war3map.w3e on disk, as the editor's (the same code): the terrain's ground tiles set to `tiles` (ids of TerrainArt\\Terrain.slk, at most 16; 64 since 1.31), each old tile's points to the new tile `to[old]` (an index of `tiles`; by default the same tile, else the first), its tileset to `tileset`; the cliff types follow the tiles (CliffTypes.slk groundTile, at most 15). The tables come from the game's files and roots (`game`, `roots`, or the project's).",
+            "inputSchema": {"type": "object", "properties": {
+                "path": {"type": "string", "description": "The war3map.w3e on disk"},
+                "tiles": {"type": "array", "items": {"type": "string"}},
+                "to": {"type": "array", "items": {"type": "integer", "minimum": 0}, "description": "For each tile the terrain has now, its new index in `tiles`"},
+                "tileset": {"type": "string", "description": "The tileset's letter (L); default the terrain's"},
+                "game": {"type": "array", "items": {"type": "string"}}, "roots": {"type": "array", "items": {"type": "string"}},
+            }, "required": ["path", "tiles"]},
+        },
+        {
+            "name": "map_resize",
+            "description": "Resizes a project's map as the World Editor does (the same code): cells added (fewer than 0: taken off) on each side; the terrain, war3map.wpm, war3map.shd, war3map.w3i (the playable area kept, or set to `margins`), what's placed off it removed, regions cut; each file written where it came from. A map is 32 to 480 cells across and up.",
+            "inputSchema": {"type": "object", "properties": {
+                "project": {"type": "string", "description": "The project's folder (its wc3.bni)"},
+                "left": {"type": "integer"}, "right": {"type": "integer"}, "bottom": {"type": "integer"}, "top": {"type": "integer"},
+                "margins": {"type": "array", "items": {"type": "integer", "minimum": 0}, "minItems": 4, "maxItems": 4, "description": "The playable area's margins in cells: left, right, bottom, top"},
+            }, "required": ["project"]},
+        },
+        {
             "name": "w3e_points",
             "description": "The terrain's points in a region (column x, row y from the bottom left; at most 4096 at once): world position, height (8192 is zero), water, ground texture, flags (ramp, blight, water, boundary, edge), variations, cliff level and texture.",
             "inputSchema": {"type": "object", "properties": points_props, "required": ["x", "y"]},
@@ -125,6 +145,8 @@ pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
         "w3e_points" => open(args).and_then(|t| points(&t, args)),
         "w3e_image" => open(args).and_then(|t| image(&t, args)),
         "w3e_brush" => brush(args),
+        "w3e_tiles" => tiles(args),
+        "map_resize" => resize(args),
         "w3e_set" => set(args),
         _ => return None,
     })
@@ -185,6 +207,50 @@ fn brush(args: &Value) -> Result<Value, String> {
     }
     crate::source::write(path, t.to_bytes().map_err(|e| format!("nothing written: {e}"))?)?;
     Ok(json!({"written": path, "point": [cx, cy], "steps": steps, "ground": t.ground.iter().map(|g| g.to_string()).collect::<Vec<_>>()}))
+}
+
+fn tiles(args: &Value) -> Result<Value, String> {
+    let path = crate::source::arg_str(args, "path")?;
+    let ids: Vec<String> = args.get("tiles").and_then(Value::as_array).ok_or("`tiles` is missing")?.iter().filter_map(|v| v.as_str().map(str::to_string)).collect();
+    let mut t = w3e_rs::parse(&crate::source::read_bytes(path, None)?).map_err(|e| format!("{path}: {e}"))?;
+    let to: Vec<u8> = match args.get("to").and_then(Value::as_array) {
+        Some(l) => l.iter().map(|v| v.as_u64().unwrap_or(0) as u8).collect(),
+        None => t.ground.iter().map(|g| ids.iter().position(|i| *i == g.to_string()).unwrap_or(0) as u8).collect(),
+    };
+    let letter = args.get("tileset").and_then(Value::as_str).and_then(|l| l.bytes().next()).unwrap_or(t.tileset);
+    let lookup = crate::source::lookup(args);
+    if lookup.is_empty() {
+        return Err(format!("No tables to check the tiles with: {}", crate::source::layers_named(args)));
+    }
+    let (game, _) = lookup.open();
+    let tileset = wc3_editor::tileset::Tileset::load(&game, letter as char);
+    wc3_editor::tiles::set(&mut t, &tileset, &ids, &to, letter)?;
+    crate::source::write(path, t.to_bytes().map_err(|e| format!("nothing written: {e}"))?)?;
+    Ok(json!({"written": path, "ground": t.ground.iter().map(|g| g.to_string()).collect::<Vec<_>>(), "cliffs": t.cliffs.iter().map(|c| c.to_string()).collect::<Vec<_>>(), "tileset": (t.tileset as char).to_string()}))
+}
+
+fn resize(args: &Value) -> Result<Value, String> {
+    use wc3_editor::protocol::ServerMsg;
+    let root = std::path::PathBuf::from(crate::source::arg_str(args, "project")?);
+    let side = |k: &str| args.get(k).and_then(Value::as_i64).unwrap_or(0) as i32;
+    let sides = wc3_editor::resize::Sides { left: side("left"), right: side("right"), bottom: side("bottom"), top: side("top") };
+    let margins = match args.get("margins").and_then(Value::as_array) {
+        Some(m) if m.len() == 4 => Some([0, 1, 2, 3].map(|i| m[i].as_i64().unwrap_or(0) as i32)),
+        Some(_) => return Err("`margins` is four numbers: left, right, bottom, top".into()),
+        None => None,
+    };
+    let mut s = wc3_editor::session::Session::open(&root)?;
+    s.draw();
+    let state = |msgs: Vec<ServerMsg>| msgs.into_iter().rev().find_map(|m| if let ServerMsg::State(st) = m { Some(st) } else { None }).unwrap_or_default();
+    let done = state(s.resize(sides, margins));
+    if !done.dirty {
+        return Err(done.message);
+    }
+    let saved = state(s.save());
+    if saved.dirty {
+        return Err(saved.message);
+    }
+    Ok(json!({"resized": done.message, "saved": saved.message, "width": s.terrain.width - 1, "height": s.terrain.height - 1, "margins": s.info.as_ref().map(|i| i.camera_complements)}))
 }
 
 /// The longest side `w3e_image` draws, in pixels.
