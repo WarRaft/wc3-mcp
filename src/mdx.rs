@@ -10,9 +10,9 @@ use serde_json::{Value, json};
 pub fn tools() -> Value {
     json!([{
         "name": "mdx_info",
-        "description": "What's in a model (.mdx): version, name, extent; its geosets (vertices, triangles, material, texture coordinate sets, extent), materials and their layers (filter mode, texture, alpha), textures (path, or the game's replaceable one by id: 1 team colour, 2 team glow, 11 cliff ...), sequences (name, frames, looping), its skeleton (bones and helpers: parent, the tracks that move each), its particle emitters (texture, rate, life, speed), its lights (the day and night models' sun), its ribbons, and its other chunks with their sizes. Read from disk, from inside an archive or map, or through the game's files.",
+        "description": "What's in a model (.mdx, or its text form .mdl): version, name, extent; its geosets (vertices, triangles, material, texture coordinate sets, extent), materials and their layers (filter mode, texture, alpha), textures (path, or the game's replaceable one by id: 1 team colour, 2 team glow, 11 cliff ...), sequences (name, frames, looping), its skeleton (bones and helpers: parent, the tracks that move each), its particle emitters (texture, rate, life, speed), its lights (the day and night models' sun), its ribbons, and its other chunks with their sizes. Read from disk, from inside an archive or map, or through the game's files.",
         "inputSchema": {"type": "object", "properties": {
-            "path": {"type": "string", "description": "The model: a .mdx on disk, its name inside `archive`, or its name in the game's files (Units\\Human\\Footman\\Footman.mdx)"},
+            "path": {"type": "string", "description": "The model: a .mdx (or .mdl) on disk, its name inside `archive`, or its name in the game's files (Units\\Human\\Footman\\Footman.mdx)"},
             "archive": {"type": "string", "description": "An MPQ archive or a map (.mpq, .w3x, .w3m) to read `path` from"},
             "game": crate::source::game_schema(),
             "roots": crate::source::roots_schema(),
@@ -50,7 +50,7 @@ fn extent(e: &mdx_rs::Extent) -> Value {
 
 fn info(args: &Value) -> Result<Value, String> {
     let path = crate::source::arg_str(args, "path")?;
-    let m = mdx_rs::parse(&read(args)?).map_err(|e| format!("{path}: {e}"))?;
+    let m = mdx_rs::parse_file(&read(args)?).map_err(|e| format!("{path}: {e}"))?;
     let geosets: Vec<Value> = m
         .geosets()
         .iter()
