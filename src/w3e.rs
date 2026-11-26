@@ -106,7 +106,7 @@ pub fn tools() -> Value {
         },
         {
             "name": "map_resize",
-            "description": "Resizes a project's map as the World Editor does (the same code): cells added (fewer than 0: taken off) on each side; the terrain, war3map.wpm, war3map.shd, war3map.w3i (the playable area kept, or set to `margins`), what's placed off it removed, regions cut; each file written where it came from. A map is 32 to 480 cells across and up.",
+            "description": "Resizes a project's map as the World Editor does (the same code): cells added (fewer than 0: taken off) on each side; the terrain, war3map.wpm, war3map.shd, war3map.w3i (the playable area kept, or set to `margins`), what's placed off it removed, regions cut, cameras looking off it removed; each file written where it came from. A map is 32 to 480 cells across and up.",
             "inputSchema": {"type": "object", "properties": {
                 "project": {"type": "string", "description": "The project's folder (its wc3.bni)"},
                 "left": {"type": "integer"}, "right": {"type": "integer"}, "bottom": {"type": "integer"}, "top": {"type": "integer"},
