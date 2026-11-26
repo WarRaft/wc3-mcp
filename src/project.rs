@@ -101,6 +101,7 @@ fn info(args: &Value) -> Result<Value, String> {
         "root": project.root,
         "game": project.game.iter().map(|p| place(p)).collect::<Vec<_>>(),
         "hd": project.hd,
+        "de": project.de,
         "locale": project.locale,
         "roots": project.roots.iter().map(|p| place(p)).collect::<Vec<_>>(),
         "sources": project.sources.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
