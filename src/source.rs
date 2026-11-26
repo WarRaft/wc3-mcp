@@ -57,6 +57,9 @@ pub fn lookup(args: &serde_json::Value) -> wc3_server::game::Lookup {
     wc3_server::game::Lookup {
         game: game.unwrap_or(from_project.game),
         roots: roots.unwrap_or(from_project.roots),
+        // A Reforged game folder's HD and locale: the project's.
+        hd: args.get("hd").and_then(serde_json::Value::as_bool).unwrap_or(from_project.hd),
+        locale: from_project.locale,
     }
 }
 

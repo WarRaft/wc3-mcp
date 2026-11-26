@@ -82,6 +82,7 @@ fn info(args: &Value) -> Result<Value, String> {
     let (game, open_errors) = lookup.open();
     let source = |s: wc3_server::game::Source| match s {
         wc3_server::game::Source::Archive(p) | wc3_server::game::Source::File(p) => p,
+        wc3_server::game::Source::Storage(folder, name) => folder.join(name),
     };
     let editor: Vec<Value> = wc3_server::names::PATCHED
         .iter()
@@ -99,6 +100,8 @@ fn info(args: &Value) -> Result<Value, String> {
         "manifest": manifest,
         "root": project.root,
         "game": project.game.iter().map(|p| place(p)).collect::<Vec<_>>(),
+        "hd": project.hd,
+        "locale": project.locale,
         "roots": project.roots.iter().map(|p| place(p)).collect::<Vec<_>>(),
         "sources": project.sources.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
         "exclude": project.exclude.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
