@@ -1,4 +1,5 @@
-//! The model tool, on `mdx-rs`: what's in a `.mdx`. A model is read from
+//! The model tools, on `mdx-rs`: what's in a `.mdx`, and its text form
+//! (MDL). A model is read from
 //! disk (`path`), from inside an archive or a map (`path` inside
 //! `archive`), or, when neither has it, through the game's folders and
 //! the map's roots (`game`, `roots`, by default the project's), the way
@@ -18,12 +19,39 @@ pub fn tools() -> Value {
             "roots": crate::source::roots_schema(),
             "project": crate::source::project_schema(),
         }, "required": ["path"]},
+    }, {
+        "name": "mdx_text",
+        "description": "A model as its text form, MDL (what the game's tools write and read): every chunk and field, the tracks' keys; written so it reads back into the same bytes. Long: `offset` and `limit` take lines of it (`lines` says how many there are). Read as mdx_info reads a model (a .mdx not found: the .mdl of its name, as Reforged).",
+        "inputSchema": {"type": "object", "properties": {
+            "path": {"type": "string", "description": "The model, as for mdx_info"},
+            "archive": {"type": "string", "description": "An MPQ archive or a map (.mpq, .w3x, .w3m) to read `path` from"},
+            "game": crate::source::game_schema(),
+            "roots": crate::source::roots_schema(),
+            "project": crate::source::project_schema(),
+            "offset": {"type": "integer", "minimum": 0, "description": "The first line (from 0; default 0)"},
+            "limit": {"type": "integer", "minimum": 1, "description": "Lines at most (default 2000)"},
+        }, "required": ["path"]},
     }])
 }
 
 /// Runs the tool `name`, if it's this one.
 pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
-    (name == "mdx_info").then(|| info(args))
+    match name {
+        "mdx_info" => Some(info(args)),
+        "mdx_text" => Some(text(args)),
+        _ => None,
+    }
+}
+
+fn text(args: &Value) -> Result<Value, String> {
+    let path = crate::source::arg_str(args, "path")?;
+    let m = mdx_rs::parse_file(&read(args)?).map_err(|e| format!("{path}: {e}"))?;
+    let text = mdx_rs::mdl::to_mdl(&m).map_err(|e| format!("{path}: {e}"))?;
+    let lines: Vec<&str> = text.lines().collect();
+    let offset = args.get("offset").and_then(Value::as_u64).unwrap_or(0) as usize;
+    let limit = args.get("limit").and_then(Value::as_u64).unwrap_or(2000) as usize;
+    let part = lines.iter().skip(offset).take(limit).copied().collect::<Vec<_>>().join("\n");
+    Ok(json!({"lines": lines.len(), "offset": offset, "text": part}))
 }
 
 fn read(args: &Value) -> Result<Vec<u8>, String> {
@@ -34,8 +62,8 @@ fn read(args: &Value) -> Result<Vec<u8>, String> {
     }
     let lookup = crate::source::lookup(args);
     let (game, _) = lookup.open();
-    game.read(path)
-        .map(|(bytes, _)| bytes)
+    wc3_editor::placed::read_model(&game, path)
+        .map(|(_, bytes)| bytes)
         .ok_or_else(|| format!("{path}: not on disk, nor in {}", crate::source::layers_named(args)))
 }
 

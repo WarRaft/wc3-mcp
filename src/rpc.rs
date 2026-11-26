@@ -92,7 +92,7 @@ fn initialize(params: &Value) -> Value {
             to write lines; trg_write writes a file after checking it, trg_rename renames a trigger and its \
             references, trg_variable changes or deletes a variable safely (its uses renamed, what breaks \
             listed first). Object collections (.w3o): w3o_info, w3o_split into each kind's file, w3o_join. \
-            Models (.mdx): mdx_info for what's in one (geosets, materials, textures, sequences), from disk, a map or the game's files. \
+            Models (.mdx, .mdl): mdx_info for what's in one (geosets, materials, textures, sequences), mdx_text for it as MDL text, from disk, a map or the game's files. \
             txt2, XGM's markup (.txt2 articles): txt2_syntax before writing it, txt2_check, txt2_outline for \
             the parts of a big article with their lines, txt2_get for one part's text, txt2_html for the page.",
     })

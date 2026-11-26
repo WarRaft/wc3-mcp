@@ -46,3 +46,20 @@ fn what_a_model_has_from_disk_or_through_the_roots() {
     assert!(missing.unwrap_err().contains("not on disk"));
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// A model's text form: a `.mdx` not found read as the `.mdl` of its
+/// name, its lines taken by offset and limit.
+#[test]
+fn a_models_text_form() {
+    let dir = std::env::temp_dir().join(format!("wc3-mcp-mdl-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("Doodads")).unwrap();
+    let mdl = "Version { FormatVersion 800, }\nModel \"Rock\" { BlendTime 150, }\nSequences 1 { Anim \"Stand\" { Interval { 0, 1000 }, } }\nPivotPoints 1 { { 0, 0, 0 }, }\n";
+    std::fs::write(dir.join("Doodads/Rock.mdl"), mdl).unwrap();
+    let all = call("mdx_text", &json!({"path": "Doodads\\Rock.mdx", "game": [], "roots": [dir]})).unwrap().unwrap();
+    let text = all["text"].as_str().unwrap();
+    assert!(text.starts_with("Version {\n\tFormatVersion 800,\n}\nModel \"Rock\" {"), "{text}");
+    assert!(text.contains("Anim \"Stand\" {"), "{text}");
+    let part = call("mdx_text", &json!({"path": "Doodads\\Rock.mdx", "game": [], "roots": [dir], "offset": 1, "limit": 1})).unwrap().unwrap();
+    assert_eq!((part["text"].as_str(), part["lines"].clone()), (Some("\tFormatVersion 800,"), all["lines"].clone()));
+    let _ = std::fs::remove_dir_all(dir);
+}
