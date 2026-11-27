@@ -84,12 +84,13 @@ pub fn tools() -> Value {
             "description": "Lays one of the World Editor's terrain brushes on a war3map.w3e on disk, as the editor's palette does (the same code): a circle `size` cells (128 units) across around the point x, y (the game's units). Tools: raise, lower (most in the middle, `strength` layers), plateau (to the height at the point), smooth (toward the neighbours' average, `strength` 0-1), texture (the ground tile `texture`, added to the terrain's list if it isn't there), cliff_up, cliff_down (the cliff layer one up or down from the point's, in cliff texture `cliff`), water, dry. `steps` lays it that many times.",
             "inputSchema": {"type": "object", "properties": {
                 "path": {"type": "string", "description": "The war3map.w3e on disk"},
-                "tool": {"type": "string", "enum": ["raise", "lower", "plateau", "smooth", "texture", "cliff_up", "cliff_down", "water", "dry"]},
+                "tool": {"type": "string", "enum": ["raise", "lower", "plateau", "smooth", "texture", "cliff_up", "cliff_down", "water", "dry", "noise"]},
                 "x": {"type": "number"}, "y": {"type": "number"},
                 "size": {"type": "number", "minimum": 1, "description": "Across, in cells (default 4)"},
                 "strength": {"type": "number", "minimum": 0, "description": "Layers a step (raise, lower), or 0-1 (smooth); default 0.25"},
                 "texture": {"type": "string", "description": "The ground tile id (Lgrs)"},
                 "cliff": {"type": "integer", "description": "The cliff texture: an index into the terrain's cliff list (-1 keeps each point's)"},
+                "square": {"type": "boolean", "description": "A square brush (size across), else a circle"},
                 "variation": {"type": "integer", "description": "texture: the ground variation (0-17); cliff_up, cliff_down: the cliff variation (0-7); -1 or left out at random, as World Editor gives them"},
                 "steps": {"type": "integer", "minimum": 1, "maximum": 100},
             }, "required": ["path", "tool", "x", "y"]},
@@ -179,6 +180,7 @@ fn brush(args: &Value) -> Result<Value, String> {
         "cliff_down" => Tool::CliffDown,
         "water" => Tool::Water,
         "dry" => Tool::Dry,
+        "noise" => Tool::Noise,
         other => return Err(format!("no tool {other}")),
     };
     let number = |k: &str| args.get(k).and_then(Value::as_f64).map(|v| v as f32);
@@ -196,6 +198,7 @@ fn brush(args: &Value) -> Result<Value, String> {
         cliff: args.get("cliff").and_then(Value::as_i64).unwrap_or(-1) as i32,
         flags: 0,
         variation: args.get("variation").and_then(Value::as_i64).unwrap_or(-1) as i32,
+        square: args.get("square").and_then(Value::as_bool).unwrap_or(false),
     };
     let mut t = w3e_rs::parse(&crate::source::read_bytes(path, None)?).map_err(|e| format!("{path}: {e}"))?;
     let (cx, cy) = ((x - t.offset_x) / w3e_rs::CELL, (y - t.offset_y) / w3e_rs::CELL);
