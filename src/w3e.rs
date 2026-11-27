@@ -90,6 +90,7 @@ pub fn tools() -> Value {
                 "strength": {"type": "number", "minimum": 0, "description": "Layers a step (raise, lower), or 0-1 (smooth); default 0.25"},
                 "texture": {"type": "string", "description": "The ground tile id (Lgrs)"},
                 "cliff": {"type": "integer", "description": "The cliff texture: an index into the terrain's cliff list (-1 keeps each point's)"},
+                "variation": {"type": "integer", "description": "texture: the ground variation (0-17); cliff_up, cliff_down: the cliff variation (0-7); -1 or left out at random, as World Editor gives them"},
                 "steps": {"type": "integer", "minimum": 1, "maximum": 100},
             }, "required": ["path", "tool", "x", "y"]},
         },
@@ -194,6 +195,7 @@ fn brush(args: &Value) -> Result<Value, String> {
         texture,
         cliff: args.get("cliff").and_then(Value::as_i64).unwrap_or(-1) as i32,
         flags: 0,
+        variation: args.get("variation").and_then(Value::as_i64).unwrap_or(-1) as i32,
     };
     let mut t = w3e_rs::parse(&crate::source::read_bytes(path, None)?).map_err(|e| format!("{path}: {e}"))?;
     let (cx, cy) = ((x - t.offset_x) / w3e_rs::CELL, (y - t.offset_y) / w3e_rs::CELL);
