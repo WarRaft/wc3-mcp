@@ -17,14 +17,14 @@ pub fn tools() -> Value {
     json!([
         {
             "name": "project_info",
-            "description": "A project's settings (wc3.bni, the nearest one in the folder of `path` or above): its game folders and map roots (each: does it exist, a folder or a map), code sources and exclusions, builds, JASS dialect, lint settings, the external tools, the problems of the settings, the manifest's text; and the editor's files the layers give (UI\\TriggerData.txt ...: from where, and the patches beside them, X.patch.txt changing X by meaning). Change the settings with project_write.",
+            "description": "A project's settings (wc3.bni, the nearest one in the folder of `path` or above): its game folders and map roots (each: does it exist, a folder or a map), code sources and exclusions, builds, the language sections ([jass] [vjass] [zinc] [cjass] [lua] [as]: which are on, strict JASS and its files, cJass's features, the dialect a .j file is read in), lint settings, the external tools, the problems of the settings, the manifest's text; and the editor's files the layers give (UI\\TriggerData.txt ...: from where, and the patches beside them, X.patch.txt changing X by meaning). Change the settings with project_write.",
             "inputSchema": {"type": "object", "properties": {
                 "path": {"type": "string", "description": "A project's wc3.bni, or any file or folder in it (a map, a trigger folder)"},
             }, "required": ["path"]},
         },
         {
             "name": "project_write",
-            "description": "Writes a project's wc3.bni from its whole text (made if missing), after reading it as the editor does: every error, with its line, and nothing written; warnings come back with what was written. Sections: [project] game= (game folders, lowest first), [map] root= (folders or maps whose top is the map's, lowest first; patches to the editor's files go in a folder root: UI\\TriggerData.patch.txt), [code] sources=, exclude= (masks), [build] name=, [jass] dialect=, [lint] <rule>=off|warning|error, [external] NAME=\"program\",\"arg\" (the tools JassHelper's //! external NAME runs on the map built: \"wine\",\"tools/ObjectMerger.exe\" for a Windows one). Paths are against the project's folder.",
+            "description": "Writes a project's wc3.bni from its whole text (made if missing), after reading it as the editor does: every error, with its line, and nothing written; warnings come back with what was written. Sections: [project] game= (game folders, lowest first), [map] root= (folders or maps whose top is the map's, lowest first; patches to the editor's files go in a folder root: UI\\TriggerData.patch.txt), [code] sources=, exclude= (masks), [build] name=, the language sections [jass] enable=, strict=, file= (the strict program's files, in order), string_limit=, concat_limit=, [vjass] [zinc] [cjass] [lua] [as] enable= (1/0; vJASS and Zinc on by default, cJass off; cJass's features by name: [cjass] macros=0 ...; a file's header sets the same keys: // @vjass.enable=0), [lint] <rule>=off|warning|error, [external] NAME=\"program\",\"arg\" (the tools JassHelper's //! external NAME runs on the map built: \"wine\",\"tools/ObjectMerger.exe\" for a Windows one). Paths are against the project's folder.",
             "inputSchema": {"type": "object", "properties": {
                 "path": {"type": "string", "description": "The wc3.bni, or the project's folder"},
                 "text": {"type": "string", "description": "The whole text"},
@@ -96,6 +96,13 @@ fn info(args: &Value) -> Result<Value, String> {
             })
         })
         .collect();
+    let s = &project.settings;
+    let languages = json!({
+        "jass": s.jass, "vjass": s.vjass_on(), "zinc": s.zinc_on(), "cjass": s.cjass_on(), "lua": s.lua, "as": s.angelscript,
+        "strict": s.strict, "strict_files": project.strict_files.iter().map(|p| place(p)).collect::<Vec<_>>(),
+        "cjass_features": s.cjass_features.iter().map(|(f, on)| json!({"feature": f, "on": on})).collect::<Vec<_>>(),
+        "jass_dialect": jass_rs::Dialect::of(s).map(|d| d.name()),
+    });
     Ok(json!({
         "manifest": manifest,
         "root": project.root,
@@ -107,7 +114,7 @@ fn info(args: &Value) -> Result<Value, String> {
         "sources": project.sources.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
         "exclude": project.exclude.iter().map(|g| g.text.clone()).collect::<Vec<_>>(),
         "builds": project.builds.iter().map(|b| serde_json::json!({"name": b.name, "out": b.out(&project), "script": b.script.extension(), "uglify": b.uglify, "inline": b.inline, "dead_code": b.dead_code, "string_hash": b.string_hash})).collect::<Vec<_>>(),
-        "jass_dialect": project.jass_dialect.map(|d| format!("{d:?}").to_lowercase()),
+        "languages": languages,
         "lint": lint,
         "externals": project.externals.iter().map(|(t, argv)| json!({"name": t, "command": argv})).collect::<Vec<_>>(),
         "problems": issues(&problems),
