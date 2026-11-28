@@ -407,10 +407,13 @@ Two kinds of checking, because the build sorts functions to get around
 JASS calling only functions declared above:
 
 - **strict**: `war3map.j` as the game reads it (the strict dialect:
-  the group `strict`'s rules are errors; a call before the function's
-  declaration and a `local` after a statement are to join it). A
-  build's `war3map.j`, a map's, its `.ai` and `.pld` are checked this way, by itself: the game's files
-  only, as the game has no imports.
+  the group `strict`'s rules are errors, `call-before-declaration`
+  among them; a `local` after a statement is to join it). A build's
+  `war3map.j`, a map's, its `.ai` and `.pld` are checked this way, by
+  itself: the game's files only, as the game has no imports. A builder
+  of one's own: `code_check`'s `strict` takes the files it glues, in
+  their order, and checks them as that one script, each problem at its
+  own file and line (`jass_rs::strict::check`).
 - **extended**: the project's sources, in extended JASS, where those are
   fine (the build orders functions; locals go anywhere). A project can
   still turn `strict` on in `[lint]`; a tool can ask for either.

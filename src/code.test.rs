@@ -194,3 +194,24 @@ fn rename_inside_a_maps_custom_script() {
     assert_eq!(back.triggers[0].text(), b"function Trig_A takes nothing returns nothing\n    call Common()\nendfunction\nfunction InitTrig_A takes nothing returns nothing\nendfunction\n");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A builder of one's own: the files checked as one script glued in the
+/// order given, strict JASS over the game's common.j; each problem at its
+/// own file and line.
+#[test]
+fn check_files_as_one_strict_script() {
+    let dir = temp("check-strict");
+    write(&dir.join("game/Scripts/common.j"), "type unit extends handle\nnative KillUnit takes unit u returns nothing\n");
+    write(&dir.join("proj/wc3.bni"), &format!("[project]\ngame={}\n", dir.join("game").display()));
+    write(&dir.join("proj/a.j"), "function A takes nothing returns nothing\n    call KillUnit(null)\nendfunction\n");
+    write(&dir.join("proj/b.j"), "function B takes nothing returns nothing\n    call A()\n    call Missing()\nendfunction\n");
+    let run = |files: &[&str]| call("code_check", &json!({"path": dir.join("proj"), "strict": files})).unwrap().unwrap();
+    let r = run(&["a.j", "b.j"]);
+    assert_eq!((r["names_checked"].as_bool(), r["total"].as_u64()), (Some(true), Some(1)), "{r}");
+    assert_eq!((r["problems"][0]["file"].as_str(), r["problems"][0]["line"].as_u64()), (Some("b.j"), Some(3)), "{r}");
+    // The other way round: B calls A above it.
+    let r = run(&["b.j", "a.j"]);
+    let p = r["problems"].as_array().unwrap();
+    assert!(p.iter().any(|p| p["rule"] == "call-before-declaration" && p["file"] == "b.j" && p["line"] == 2 && p["level"] == "error" && p["message"].as_str().unwrap().contains("(a.j:1)")), "{r}");
+    let _ = std::fs::remove_dir_all(&dir);
+}

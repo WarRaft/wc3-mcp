@@ -26,6 +26,7 @@ pub fn tools() -> Value {
                 "file": {"type": "string", "description": "Only this file's problems (the whole project is read all the same)"},
                 "errors": {"type": "boolean", "description": "Errors only, no warnings (default false)"},
                 "limit": {"type": "integer", "minimum": 1, "maximum": 5000, "description": "Problems to give at most (default 300); `total` counts them all"},
+                "strict": {"type": "array", "items": {"type": "string"}, "description": "Instead of the project's code: these JASS files checked as the game reads a map's script, one file glued in the order given (a builder of one's own; the game has no imports): strict JASS, a function called above its declaration and the rest of the group `strict` errors, names over the game's common.j and Blizzard.j (common.ai when every file is .ai) from the project's game= and roots. Paths relative to the project's folder. Each problem at its own file and line"},
             }, "required": ["path"]},
         },
         {
@@ -94,6 +95,9 @@ fn check(args: &Value) -> Result<Value, String> {
     });
     let errors_only = args.get("errors").and_then(Value::as_bool).unwrap_or(false);
     let limit = args.get("limit").and_then(Value::as_u64).unwrap_or(300) as usize;
+    if let Some(list) = args.get("strict") {
+        return check_strict(list, &at, &root, errors_only, limit);
+    }
 
     let mut ws = Workspace::default();
     ws.set_roots(vec![root.clone()]);
@@ -122,6 +126,46 @@ fn check(args: &Value) -> Result<Value, String> {
     let total = problems.len();
     problems.truncate(limit);
     Ok(json!({"project": root, "files": files, "total": total, "problems": problems}))
+}
+
+/// `code_check`'s `strict`: the files glued in their order, one script as
+/// the game reads it (`jass_rs::strict::check`), over the game's scripts
+/// of the project's lookup.
+fn check_strict(list: &Value, at: &Path, root: &Path, errors_only: bool, limit: usize) -> Result<Value, String> {
+    let paths: Vec<PathBuf> = list
+        .as_array()
+        .ok_or("'strict' is a list of files")?
+        .iter()
+        .map(|v| v.as_str().map(|f| root.join(f)).ok_or_else(|| "'strict' is a list of files".to_string()))
+        .collect::<Result<_, _>>()?;
+    if paths.is_empty() {
+        return Err("'strict' names no file".into());
+    }
+    let texts: Vec<String> = paths
+        .iter()
+        .map(|p| std::fs::read(p).map(wc3_server::document::decode).map_err(|e| format!("{}: {e}", p.display())))
+        .collect::<Result<_, _>>()?;
+    let (project, _, _) = crate::source::load_project(at).ok_or("no project")?;
+    let (game, _) = wc3_server::game::Lookup::of(&project).open();
+    let read = |n: &str| game.read(n).map(|(b, _)| b);
+    let ai = paths.iter().all(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("ai")));
+    let env = wc3_server::build::game_declarations(&read, ai);
+    let names_checked = !env.is_empty();
+    let env: Vec<&jass_rs::names::Declarations> = env.iter().collect();
+    let shown: Vec<String> = paths.iter().map(|p| relative(root, &p.to_string_lossy())).collect();
+    let sources: Vec<(&str, &str)> = shown.iter().map(String::as_str).zip(texts.iter().map(String::as_str)).collect();
+    let mut problems: Vec<Value> = jass_rs::strict::check(&sources, &env)
+        .into_iter()
+        .filter(|f| !errors_only || f.diagnostic.level == parser_rs::Level::Error)
+        .map(|f| {
+            let d = f.diagnostic;
+            let (col, end_line, end_col) = d.span.map_or((1, d.line, 1), |s| (s.start_col, s.end_line, s.end_col));
+            json!({"file": shown[f.file], "line": d.line, "col": col, "end_line": end_line, "end_col": end_col, "level": d.level.as_str(), "rule": d.rule, "message": d.message})
+        })
+        .collect();
+    let total = problems.len();
+    problems.truncate(limit);
+    Ok(json!({"project": root, "files": paths.len(), "strict": true, "names_checked": names_checked, "total": total, "problems": problems}))
 }
 
 /// The project's workspace, loaded as the editor loads it, and its root.
