@@ -175,7 +175,7 @@ fn list(f: &Placed, args: &Value) -> Result<Value, String> {
     let lookup = crate::source::lookup(args);
     let known = (!lookup.is_empty()).then(|| {
         let (game, _) = lookup.open();
-        (wc3_editor::types::Types::load(&game), wc3_server::names::with_objects(&lookup))
+        (wc3_editor::types::Types::load(&game), wc3_server::names::with_objects(&lookup), wc3_editor::placed::random_art(&game))
     });
     let units = matches!(f, Placed::Units(_));
     let page: Vec<Value> = items
@@ -184,10 +184,16 @@ fn list(f: &Placed, args: &Value) -> Result<Value, String> {
         .take(limit)
         .map(|(i, mut v)| {
             v["index"] = json!(i);
-            if let Some((types, names)) = &known {
+            if let Some((types, names, random)) = &known {
                 let id = v["id"].as_str().unwrap_or_default().to_string();
                 let variation = v["variation"].as_u64().unwrap_or(0) as u32;
-                if let Some(m) = parser_rs::Rawcode::parse(&id).and_then(|code| wc3_editor::placed::model_of(types, code, variation, units)) {
+                // A random object (`YYU:`, `YkI/`, `uDNR` ...): what it is, and
+                // World Editor's question mark.
+                let code = parser_rs::Rawcode::parse(&id);
+                if units && code.and_then(doo_rs::RandomType::parse).is_some() {
+                    v["name"] = json!(names.random(&id));
+                    v["model"] = json!(random.model);
+                } else if let Some(m) = code.and_then(|code| wc3_editor::placed::model_of(types, code, variation, units)) {
                     v["name"] = json!(names.objects.get(m.kind, &id).map(|n| n.shown()));
                     v["model"] = json!(m.paths.as_ref().and_then(|p| p.first()));
                 }
