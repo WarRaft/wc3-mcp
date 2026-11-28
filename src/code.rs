@@ -170,7 +170,7 @@ fn check_strict(list: &Value, at: &Path, root: &Path, errors_only: bool, limit: 
 }
 
 /// The project's workspace, loaded as the editor loads it, and its root.
-fn workspace(args: &Value) -> Result<(Workspace, PathBuf), String> {
+pub(crate) fn workspace(args: &Value) -> Result<(Workspace, PathBuf), String> {
     let at = PathBuf::from(arg_str(args, "path")?);
     let at = std::path::absolute(&at).unwrap_or(at);
     let (_, manifest, _) = crate::source::load_project(&at)
@@ -443,7 +443,7 @@ fn natives(args: &Value) -> Result<Value, String> {
 }
 
 /// `id` against the project's folder, when it's inside it.
-fn relative(root: &Path, id: &str) -> String {
+pub(crate) fn relative(root: &Path, id: &str) -> String {
     Path::new(id).strip_prefix(root).map_or(id.to_string(), |p| p.to_string_lossy().into_owned())
 }
 

@@ -19,6 +19,7 @@ mod wtg;
 mod trg;
 mod w3o;
 mod mpq;
+mod nav;
 mod txt2;
 mod obj;
 mod project;

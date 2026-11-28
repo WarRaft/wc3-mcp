@@ -123,6 +123,7 @@ fn call(params: &Value) -> Value {
         .or_else(|| crate::mdx::call(name, &args))
         .or_else(|| crate::project::call(name, &args))
         .or_else(|| crate::code::call(name, &args))
+        .or_else(|| crate::nav::call(name, &args))
         .unwrap_or_else(|| crate::slk::call(name, &args));
     match answer {
         // A tool that answers with more than text (a picture): its content
@@ -168,6 +169,7 @@ fn tools() -> Value {
     all.extend(crate::mdx::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::project::tools().as_array().cloned().unwrap_or_default());
     all.extend(crate::code::tools().as_array().cloned().unwrap_or_default());
+    all.extend(crate::nav::tools().as_array().cloned().unwrap_or_default());
     Value::Array(all)
 }
 
