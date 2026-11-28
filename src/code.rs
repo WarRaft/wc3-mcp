@@ -166,11 +166,11 @@ fn rename(args: &Value) -> Result<Value, String> {
     // A name declared again in the same file and place (a method's
     // overloads) is one.
     decls.dedup_by(|a, b| a.0 == b.0 && a.2.line == b.2.line && a.2.col == b.2.col);
-    // A copy in a script World Editor makes from the triggers isn't the
-    // one meant: its source is (the rename takes the copy along). One
-    // only there is the server's to refuse.
-    if decls.iter().any(|d| !wc3_server::rename::made_from_triggers(d.1)) {
-        decls.retain(|d| !wc3_server::rename::made_from_triggers(d.1));
+    // A copy in a map's script (`war3map.j`, an earlier build's) isn't
+    // the one meant when the name's source is found too: the source is
+    // (the copy, apart, stays till the next build). `file` picks the copy.
+    if file.is_none() && decls.iter().any(|d| !ws.is_generated(d.0)) {
+        decls.retain(|d| !ws.is_generated(d.0));
     }
     let (id, doc, target) = match decls.as_slice() {
         [] => {

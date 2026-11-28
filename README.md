@@ -342,7 +342,7 @@ what VS Code shows.
 | tool         | does |
 |--------------|------|
 | `code_check` | every problem of a project's code (JASS, Zinc, Lua, AngelScript): parse errors, lint with the project's `[lint]`, and each JASS name and type checked against the whole project and the game's scripts it runs with (`unknown-name`, `argument-count`, `type-mismatch`, `array-access`, `constant-assignment`), so a problem between files shows; one file's only, errors only, a limit |
-| `jass_rename`  | renames a symbol of a project's code everywhere it means it, as the editor's rename does (the wc3-rs server's `rename`, in process): every file of the project, a map's custom script (`war3map.wct`, written back as its bytes) and scripts inside maps too, scopes and shadowing respected; refused with the reason and nothing written (a native or the game's, declared nowhere, a member of several structs, a bad or taken name, a map that can't be written, a file that isn't UTF-8; a name World Editor's script makes of the map's triggers, declared only in its `war3map.j` (`udg_`, `gg_trg_`, `gg_unit_` ...) or a trigger's `InitTrig_`: the trigger or variable is renamed instead, else it comes back when the map is saved); a copy in that `war3map.j` follows its source; `file`/`line` pick a declaration when several have the name; `dry_run` |
+| `jass_rename`  | renames a symbol of a project's code everywhere it means it, as the editor's rename does (the wc3-rs server's `rename`, in process): every file of the project, a map's custom script (`war3map.wct`, written back as its bytes) and scripts inside maps too (not a map's `war3map.j`: an earlier build's, strict JASS, apart), scopes and shadowing respected; refused with the reason and nothing written (a native or the game's, declared nowhere, a member of several structs, a bad or taken name, a map that can't be written, a file that isn't UTF-8; a trigger's `InitTrig_`: the trigger is renamed instead); a map's `war3map.j` is renamed in alone (a hotfix: a name only there, or `file` naming it), never along with the project's code, its copy of a source's name staying till the next build; `file`/`line` pick a declaration when several have the name; `dry_run` |
 | `jass_build`   | builds JASS files (or a folder's) into one script the game reads, with `wc3-build`: this toolchain's JASS made the game's, `main` and `config` merged, globals and functions sorted (a cycle through `TriggerEvaluate`), locals to the top; with `uglify`, shorter names (everything the game doesn't need as it is renamed `a`, `b` ...); written to `out` or given back; errors with their file and line |
 | `jass_natives` | what the game's scripts declare as a project sees them (`common.j`, `Blizzard.j`, `common.ai` through its `game=` and roots, the last found winning: UjAPI's `common.j` over the game's): natives, functions, globals, each with its declaration, script, line and the comment above it; by a part of the name (the exact name first) or of the comment, by kind or script |
 
@@ -406,13 +406,14 @@ shaped for (jass-rs, the wc3-rs server):
 Two kinds of checking, because the build sorts functions to get around
 JASS calling only functions declared above:
 
-- **pure**: `war3map.j` as the game reads it; a call before the
-  function's declaration, a `local` after a statement, and the rest of
-  the `pure` group are errors. A map's script (`war3map.j`, inside a map
-  or by that name) is checked this way by itself.
-- **development**: the project's sources, where those are fine (the
-  build orders functions; locals go anywhere). A project can still turn
-  `pure` on in `[lint]`; a tool can ask for either.
+- **strict**: `war3map.j` as the game reads it (the strict dialect:
+  the group `strict`'s rules are errors; a call before the function's
+  declaration and a `local` after a statement are to join it). A
+  build's `war3map.j`, a map's, its `.ai` and `.pld` are checked this way, by itself: the game's files
+  only, as the game has no imports.
+- **extended**: the project's sources, in extended JASS, where those are
+  fine (the build orders functions; locals go anywhere). A project can
+  still turn `strict` on in `[lint]`; a tool can ask for either.
 
 The wc3-rs server is a library as well as a binary (`wc3_server`), and
 these tools use its project model in-process (workspace, symbol

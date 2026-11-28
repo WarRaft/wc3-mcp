@@ -174,14 +174,18 @@ fn rename_inside_a_maps_custom_script() {
     write(&dir.join("proj/wc3.bni"), &format!("[project]\ngame={}\n[map]\nroot=map.w3x\n[code]\nsources=code\n", dir.join("game").display()));
     write(&dir.join("proj/code/b.j"), "function B takes nothing returns nothing\n    call Shared()\nendfunction\n");
 
-    // Only in the script made of the triggers: theirs, refused.
-    let err = call("jass_rename", &json!({"path": dir.join("proj"), "name": "udg_Count", "new_name": "udg_Total"})).unwrap().unwrap_err();
-    assert!(err.starts_with("nothing renamed: `udg_Count` is declared only in war3map.j, which World Editor makes"), "{err}");
+    // Only in the map's script: renamed in it alone (a hotfix).
+    let r = call("jass_rename", &json!({"path": dir.join("proj"), "name": "udg_Count", "new_name": "udg_Total", "dry_run": true})).unwrap().unwrap();
+    assert_eq!(r["renamed"], 2, "{r}");
+    assert!(r["files"].as_array().unwrap().iter().all(|f| f["file"] == "map.w3x/war3map.j"), "{r}");
     let err = call("jass_rename", &json!({"path": dir.join("proj"), "name": "InitTrig_A", "new_name": "InitTrig_B"})).unwrap().unwrap_err();
     assert!(err.starts_with("nothing renamed: `InitTrig_A` is what World Editor's script calls for the trigger `A`"), "{err}");
-    // Also there: the custom script's is the one meant (its copy follows).
+    // Also there: the custom script's is the one meant; its copy in
+    // war3map.j, an earlier build's (strict, seeing nothing beside it),
+    // stays till the next build makes it anew.
     let r = call("jass_rename", &json!({"path": dir.join("proj"), "name": "Shared", "new_name": "Common"})).unwrap().unwrap();
-    assert_eq!(r["renamed"], 4, "{r}");
+    assert_eq!(r["renamed"], 3, "{r}");
+    assert!(!r["files"].as_array().unwrap().iter().any(|f| f["file"].as_str().is_some_and(|f| f.ends_with("war3map.j"))), "{r}");
     assert!(std::fs::read_to_string(dir.join("proj/code/b.j")).unwrap().contains("call Common()"));
     // The map's custom script, its bytes again, the names changed.
     let bytes = wc3_server::map::bytes(&map.join("war3map.wct")).unwrap();
