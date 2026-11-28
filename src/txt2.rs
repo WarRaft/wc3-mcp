@@ -74,7 +74,7 @@ pub fn call(name: &str, args: &Value) -> Option<Result<Value, String>> {
         "txt2_outline" => read(args).map(|t| {
             let doc = txt2_rs::parse(&t);
             let paragraphs = args.get("paragraphs").and_then(Value::as_bool).unwrap_or(false);
-            json!({"lines": t.split('\n').count(), "errors": doc.errors.len(), "outline": outline(&doc.blocks, paragraphs)})
+            json!({"lines": parser_rs::lines::line_count(&t), "errors": doc.errors.len(), "outline": outline(&doc.blocks, paragraphs)})
         }),
         "txt2_get" => read(args).and_then(|t| get(&t, args)),
         "txt2_html" => read(args).and_then(|t| html(&t, args)),
@@ -137,7 +137,7 @@ fn node(b: &Block, paragraphs: bool) -> Option<Value> {
         }
         BlockKind::Code { lang, text } => {
             v["lang"] = json!(lang);
-            v["lines"] = json!(text.split('\n').count());
+            v["lines"] = json!(parser_rs::lines::line_count(&text));
             "code"
         }
         BlockKind::Raw(_) => "raw",
@@ -246,8 +246,8 @@ fn get(text: &str, args: &Value) -> Result<Value, String> {
             None => list.last().map_or(b.end, |l| l.end),
         };
     }
-    let lines: Vec<&str> = text.split('\n').collect();
-    let part: Vec<&str> = lines[b.line - 1..end.min(lines.len())].iter().map(|l| l.strip_suffix('\r').unwrap_or(l)).collect();
+    let lines: Vec<&str> = parser_rs::lines::split(&text).collect();
+    let part: Vec<&str> = lines[b.line - 1..end.min(lines.len())].to_vec();
     let part = part.join("\n");
     Ok(json!({"line": b.line, "end": end, "title": title(b), "text": part}))
 }

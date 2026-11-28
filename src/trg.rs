@@ -414,7 +414,7 @@ fn read(args: &Value) -> Result<String, String> {
     let names = crate::source::names(args);
     let v = loaded.view(&me, text, &names);
     let calls = args.get("calls").and_then(Value::as_bool).unwrap_or(true);
-    let lines: Vec<&str> = text.lines().collect();
+    let lines: Vec<&str> = parser_rs::lines::lines(&text).collect();
     let label = |i: usize, english: &str| v["labels"].get(i).and_then(Value::as_str).filter(|s| !s.is_empty()).unwrap_or(english).to_string();
     let mut out = String::new();
     let file = Path::new(&me).file_name().map_or(String::new(), |n| n.to_string_lossy().into_owned());

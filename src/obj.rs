@@ -359,7 +359,7 @@ fn text(f: &File, args: &Value) -> Result<Value, String> {
         .and_then(Value::as_u64)
         .unwrap_or(1000)
         .clamp(1, MAX_LINES as u64) as usize;
-    let lines: Vec<&str> = text.lines().collect();
+    let lines: Vec<&str> = parser_rs::lines::lines(&text).collect();
     let page = lines
         .iter()
         .skip(offset)
@@ -377,7 +377,7 @@ fn check(f: &File) -> Result<Value, String> {
         return Err("no metadata: give `game`, the game's folders, to check against".into());
     }
     let text = f.data.to_text_named(&f.meta);
-    let lines: Vec<&str> = text.lines().collect();
+    let lines: Vec<&str> = parser_rs::lines::lines(&text).collect();
     let parsed = w3abdhqtu_rs::from_text(&text, &f.meta);
     // The object a line belongs to: the section above it.
     let object_at = |line: usize| {

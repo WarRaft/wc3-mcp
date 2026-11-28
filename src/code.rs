@@ -184,7 +184,7 @@ pub(crate) fn workspace(args: &Value) -> Result<(Workspace, PathBuf), String> {
 
 /// The editor's position (UTF-16 columns from 0) of a name's start.
 fn position_of(text: &str, o: &parser_rs::Occurrence) -> wc3_server::document::Position {
-    let line = text.lines().nth(o.line - 1).unwrap_or("");
+    let line = parser_rs::lines::lines(&text).nth(o.line - 1).unwrap_or("");
     let before: String = line.chars().take(o.col - 1).collect();
     wc3_server::document::Position::new(o.line as u32 - 1, before.encode_utf16().count() as u32)
 }
@@ -331,9 +331,9 @@ fn build(args: &Value) -> Result<Value, String> {
         Ok(wc3_build::jass::Built { script, notes, .. }) => match args.get("out").and_then(Value::as_str) {
             Some(out) => {
                 std::fs::write(out, &script).map_err(|e| format!("{out}: {e}"))?;
-                Ok(json!({"built": true, "files": paths.len(), "lines": script.lines().count(), "bytes": script.len(), "notes": notes, "out": out}))
+                Ok(json!({"built": true, "files": paths.len(), "lines": parser_rs::lines::lines(&script).count(), "bytes": script.len(), "notes": notes, "out": out}))
             }
-            None => Ok(json!({"built": true, "files": paths.len(), "lines": script.lines().count(), "bytes": script.len(), "notes": notes, "script": script})),
+            None => Ok(json!({"built": true, "files": paths.len(), "lines": parser_rs::lines::lines(&script).count(), "bytes": script.len(), "notes": notes, "script": script})),
         },
     }
 }

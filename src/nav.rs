@@ -97,7 +97,7 @@ fn file_id(ws: &Workspace, root: &Path, f: &str) -> String {
 /// The editor's position (UTF-16 columns from 0) of a 1-based character
 /// column of a 1-based line.
 fn position(text: &str, line: usize, col: usize) -> Position {
-    let l = text.lines().nth(line.saturating_sub(1)).unwrap_or("");
+    let l = parser_rs::lines::lines(&text).nth(line.saturating_sub(1)).unwrap_or("");
     let before: String = l.chars().take(col.saturating_sub(1)).collect();
     Position::new(line.saturating_sub(1) as u32, before.encode_utf16().count() as u32)
 }
@@ -182,7 +182,7 @@ fn namespaced(o: &Occurrence) -> String {
 
 /// One place, as the tools give it.
 fn place(ws: &Workspace, root: &Path, (id, doc, o): Found) -> Value {
-    let code = doc.text.lines().nth(o.line - 1).unwrap_or("").trim();
+    let code = parser_rs::lines::lines(&doc.text).nth(o.line - 1).unwrap_or("").trim();
     let mut v = json!({"file": relative(root, id), "line": o.line, "col": o.col, "end_col": o.end_col, "kind": o.kind.as_str(), "code": code});
     if o.declaration && !o.namespace.is_empty() {
         v["namespace"] = json!(o.namespace);

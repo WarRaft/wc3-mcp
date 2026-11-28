@@ -47,7 +47,7 @@ fn text(args: &Value) -> Result<Value, String> {
     let path = crate::source::arg_str(args, "path")?;
     let m = mdx_rs::parse_file(&read(args)?).map_err(|e| format!("{path}: {e}"))?;
     let text = mdx_rs::mdl::to_mdl(&m).map_err(|e| format!("{path}: {e}"))?;
-    let lines: Vec<&str> = text.lines().collect();
+    let lines: Vec<&str> = parser_rs::lines::lines(&text).collect();
     let offset = args.get("offset").and_then(Value::as_u64).unwrap_or(0) as usize;
     let limit = args.get("limit").and_then(Value::as_u64).unwrap_or(2000) as usize;
     let part = lines.iter().skip(offset).take(limit).copied().collect::<Vec<_>>().join("\n");
