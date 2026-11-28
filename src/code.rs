@@ -154,7 +154,8 @@ fn check_strict(list: &Value, at: &Path, root: &Path, errors_only: bool, limit: 
     let env: Vec<&jass_rs::names::Declarations> = env.iter().collect();
     let shown: Vec<String> = paths.iter().map(|p| relative(root, &p.to_string_lossy())).collect();
     let sources: Vec<(&str, &str)> = shown.iter().map(String::as_str).zip(texts.iter().map(String::as_str)).collect();
-    let mut problems: Vec<Value> = jass_rs::strict::check(&sources, &env)
+    let options = wc3_server::project::Project::jass_lint_options(Some(&project), None);
+    let mut problems: Vec<Value> = jass_rs::strict::check_with(&sources, &env, &options)
         .into_iter()
         .filter(|f| !errors_only || f.diagnostic.level == parser_rs::Level::Error)
         .map(|f| {
